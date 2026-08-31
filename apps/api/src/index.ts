@@ -5,10 +5,23 @@ import { getRequestListener } from "@hono/node-server";
 const port = Number(process.env.PORT || 8787);
 const hostname = "0.0.0.0";
 
+let starting = true;
+let lastError: string | null = null;
+
+function bootPayload() {
+  return {
+    ok: true,
+    starting,
+    databaseUrlSet: Boolean(process.env.DATABASE_URL),
+    usesCloudSqlSocket: (process.env.DATABASE_URL || "").includes("/cloudsql/"),
+    error: lastError
+  };
+}
+
 // Bind PORT immediately — before DB / app imports — so Cloud Run startup checks pass.
 const boot = new Hono();
-boot.get("/health", (c) => c.json({ ok: true, starting: true }));
-boot.all("*", (c) => c.json({ ok: true, starting: true }));
+boot.get("/health", (c) => c.json(bootPayload()));
+boot.all("*", (c) => c.json(bootPayload()));
 
 let listener = getRequestListener(boot.fetch);
 const server = createServer((req, res) => listener(req, res));
@@ -43,8 +56,11 @@ async function bootstrap() {
 
     const { app } = await createApp();
     listener = getRequestListener(app.fetch);
+    starting = false;
+    lastError = null;
     console.log("database init complete");
   } catch (err) {
+    lastError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     console.error("startup bootstrap failed", err);
   }
 }
