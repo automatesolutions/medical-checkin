@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { getRequestListener } from "@hono/node-server";
 
@@ -36,10 +38,39 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-// Bind PORT immediately — before DB / app imports — so Cloud Run startup checks pass.
+function staticResponse(reqPath: string): Response | null {
+  const root = process.env.STATIC_DIR;
+  if (!root) return null;
+  const path = reqPath === "/" ? "/index.html" : reqPath;
+  const file = join(root, path.replace(/^\//, ""));
+  const fallback = join(root, "index.html");
+  const target = existsSync(file) && !path.endsWith("/") ? file : fallback;
+  if (!existsSync(target)) return null;
+  const buf = readFileSync(target);
+  const ext = target.split(".").pop();
+  const types: Record<string, string> = {
+    html: "text/html; charset=utf-8",
+    js: "text/javascript; charset=utf-8",
+    css: "text/css; charset=utf-8",
+    svg: "image/svg+xml",
+    png: "image/png",
+    json: "application/json"
+  };
+  return new Response(buf, {
+    status: 200,
+    headers: { "Content-Type": types[ext ?? ""] ?? "application/octet-stream" }
+  });
+}
+
+// Bind PORT immediately and serve the web UI even while DB bootstrap runs.
 const boot = new Hono();
 boot.get("/health", (c) => c.json(bootPayload()));
-boot.all("*", (c) => c.json(bootPayload()));
+boot.all("/api/*", (c) => c.json({ ...bootPayload(), error: lastError || "API not ready" }, 503));
+boot.all("*", async (c) => {
+  const staticRes = staticResponse(c.req.path);
+  if (staticRes) return staticRes;
+  return c.json(bootPayload());
+});
 
 let listener = getRequestListener(boot.fetch);
 const server = createServer((req, res) => listener(req, res));
@@ -62,9 +93,13 @@ async function bootstrap() {
   );
 
   try {
-    stage = "importing";
-    const { getDb, incidents, migrate, seed } = await import("@medical/db");
-    const { createApp } = await import("./app.js");
+    stage = "importing-db";
+    console.log("bootstrap: import @medical/db");
+    const { getDb, incidents, migrate, seed } = await withTimeout(
+      import("@medical/db"),
+      15000,
+      "import @medical/db"
+    );
 
     stage = "migrating";
     console.log("bootstrap: migrate start");
@@ -80,6 +115,10 @@ async function bootstrap() {
       }
       console.log("bootstrap: seed done");
     }
+
+    stage = "importing-app";
+    console.log("bootstrap: import createApp");
+    const { createApp } = await withTimeout(import("./app.js"), 15000, "import createApp");
 
     stage = "creating-app";
     const { app } = await createApp();

@@ -1,12 +1,10 @@
-import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
-import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import postgres from "postgres";
 import * as schema from "./schema.js";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-export type Db = ReturnType<typeof drizzlePglite<typeof schema>> | ReturnType<typeof drizzlePg<typeof schema>>;
+export type Db = ReturnType<typeof drizzlePg<typeof schema>>;
 
 let cached: { db: Db; migrateSql: (sql: string) => Promise<void> } | null = null;
 
@@ -72,14 +70,19 @@ export async function getDb(): Promise<{ db: Db; migrateSql: (sql: string) => Pr
       "DATABASE_URL must be set to a postgres:// URL in production (Cloud SQL Unix socket form recommended)."
     );
   }
-  // Local/dev fallback: in-memory when unset, or file path when PGLITE_PATH is set.
+
+  // Local/dev only: lazy-load PGlite so Cloud Run never loads its WASM module.
+  const [{ PGlite }, { drizzle: drizzlePglite }] = await Promise.all([
+    import("@electric-sql/pglite"),
+    import("drizzle-orm/pglite")
+  ]);
   const file = process.env.PGLITE_PATH;
   if (file) {
     mkdirSync(dirname(resolve(file)), { recursive: true });
   }
   const pglite = file ? new PGlite(resolve(file)) : new PGlite();
   await pglite.waitReady;
-  const db = drizzlePglite(pglite, { schema });
+  const db = drizzlePglite(pglite, { schema }) as unknown as Db;
   cached = {
     db,
     migrateSql: async (sql) => {
