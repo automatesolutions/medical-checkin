@@ -30,8 +30,16 @@ export function App() {
   useEffect(() => {
     fetch(`/api/public/incidents/${slug}`)
       .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error || "Not found");
-        return r.json();
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          const detail = body.error || body.stage || r.statusText;
+          throw new Error(
+            r.status === 503
+              ? `Service starting up (${detail}). Refresh in a few seconds.`
+              : detail || "Not found"
+          );
+        }
+        return body;
       })
       .then(setIncident)
       .catch((e) => setError(e.message));

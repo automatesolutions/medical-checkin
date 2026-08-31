@@ -72,7 +72,8 @@ export async function migrate() {
   await migrateSql(MIGRATION_SQL);
 }
 
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}` || process.argv[1]?.endsWith("migrate.ts")) {
+const entry = process.argv[1]?.replace(/\\/g, "/") ?? "";
+if (entry.endsWith("/migrate.ts") || entry.endsWith("/migrate.js")) {
   migrate().then(() => {
     console.log("migrated");
   });
