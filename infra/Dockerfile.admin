@@ -1,0 +1,19 @@
+FROM node:20-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY packages ./packages
+COPY apps ./apps
+RUN npm install
+RUN npm run build --workspace=@medical/admin
+
+FROM node:20-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production SERVICE_MODE=admin PORT=8080
+COPY package.json package-lock.json* ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+COPY --from=build /app/apps/admin/dist ./apps/admin/dist
+RUN npm install --omit=dev
+ENV STATIC_DIR=/app/apps/admin/dist
+EXPOSE 8080
+CMD ["npx", "tsx", "apps/api/src/index.ts"]

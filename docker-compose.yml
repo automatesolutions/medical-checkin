@@ -1,0 +1,14 @@
+services:
+  api:
+    image: node:20-bookworm
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm install && AUTO_SEED=1 npx tsx apps/api/src/index.ts"
+    environment:
+      PORT: "8787"
+      SERVICE_MODE: all
+      AUTO_SEED: "1"
+      PUBLIC_CHECKIN_ORIGIN: http://localhost:5174
+    ports:
+      - "8787:8787"

@@ -1,0 +1,7 @@
+# Apply after the HTTPS load balancer exists.
+# gcloud compute security-policies create medical-checkin-armor --description="Rate-limit public check-in"
+# gcloud compute security-policies rules create 1000 --security-policy=medical-checkin-armor --expression="request.path.matches('/api/public/') && request.method=='POST'" --action=rate-based-ban --rate-limit-threshold-count=30 --rate-limit-threshold-interval-sec=60 --ban-duration-sec=300 --conform-action=allow --exceed-action=deny-429 --enforce-on-key=IP
+# Attach the policy to the check-in backend service.
+kind: compute#securityPolicy
+name: medical-checkin-armor
+description: Rate-limit anonymous check-in POSTs

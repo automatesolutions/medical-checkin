@@ -1,0 +1,48 @@
+# Cloud Build: build and deploy admin + checkin Cloud Run services.
+# Substitutions: _REGION, _AR_REPO, _SQL_INSTANCE, _PUBLIC_CHECKIN_ORIGIN
+substitutions:
+  _REGION: us-west1
+  _AR_REPO: medical-checkin
+  _SERVICE_ADMIN: medical-admin
+  _SERVICE_CHECKIN: medical-checkin
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/admin:$COMMIT_SHA", "-f", "infra/Dockerfile.admin", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/checkin:$COMMIT_SHA", "-f", "infra/Dockerfile.checkin", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/admin:$COMMIT_SHA"]
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/checkin:$COMMIT_SHA"]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_ADMIN}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/admin:$COMMIT_SHA
+      - --region=${_REGION}
+      - --no-allow-unauthenticated
+      - --set-secrets=DATABASE_URL=DATABASE_URL:latest
+      - --set-env-vars=SERVICE_MODE=admin,STATIC_DIR=/app/apps/admin/dist,REQUIRE_IAP=1,PUBLIC_CHECKIN_ORIGIN=${_PUBLIC_CHECKIN_ORIGIN}
+      - --add-cloudsql-instances=${_SQL_INSTANCE}
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_CHECKIN}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/checkin:$COMMIT_SHA
+      - --region=${_REGION}
+      - --allow-unauthenticated
+      - --set-secrets=DATABASE_URL=DATABASE_URL:latest
+      - --set-env-vars=SERVICE_MODE=checkin,STATIC_DIR=/app/apps/checkin/dist
+      - --add-cloudsql-instances=${_SQL_INSTANCE}
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/admin:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/checkin:$COMMIT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY

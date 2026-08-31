@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implementation plan — Medical Resource Check-In &amp; Glide Path</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f2ec;
+    --surface: #fff;
+    --charcoal: #1c1814;
+    --ember: #e2691f;
+    --ember-deep: #b8461d;
+    --border: #e3dbcf;
+    --hair: #f4efe6;
+    --muted: #8b8072;
+    --body: #3a332b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--charcoal); font-family: "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--ember-deep); text-decoration: none; }
+  a:hover { color: #8f3413; text-decoration: underline; }
+  .wrap { display: flex; min-height: 100vh; }
+  nav {
+    width: 212px; flex: none; background: var(--charcoal); color: #e8e1d6;
+    position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+  }
+  nav .brand { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.09); }
+  nav .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 0 4px rgba(226,105,31,.18); }
+  nav .unit { font: 600 12.5px/1.1 "IBM Plex Sans"; letter-spacing: .02em; }
+  nav h1 { margin: 11px 0 0; font: 600 15px/1.25 "IBM Plex Sans"; color: #fff; }
+  nav .meta { margin-top: 4px; font: 400 10.5px/1.3 "IBM Plex Mono"; color: #8e857a; }
+  nav .links { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: auto; }
+  nav a.item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px;
+    font: 500 12.5px/1 "IBM Plex Sans"; color: #e8e1d6; text-decoration: none;
+  }
+  nav a.item:hover { background: rgba(255,255,255,.07); text-decoration: none; color: #fff; }
+  nav a.item .pip { width: 5px; height: 5px; border-radius: 50%; background: #5a5248; flex: none; }
+  nav .foot { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.09); font: 400 10px/1.5 "IBM Plex Mono"; color: #7d7469; }
+  main { flex: 1; min-width: 0; padding: 22px 28px 56px; max-width: 980px; }
+  .kicker { font: 600 10px/1 "IBM Plex Mono"; letter-spacing: .11em; color: #9a8f80; text-transform: uppercase; }
+  h2.page { margin: 7px 0 0; font: 600 23px/1.15 "IBM Plex Sans"; letter-spacing: -.015em; }
+  .lead { margin: 8px 0 0; font: 400 13px/1.55 "IBM Plex Sans"; color: #6f6558; max-width: 720px; }
+  .cards { display: flex; gap: 7px; flex-wrap: wrap; margin: 18px 0 8px; }
+  .card { min-width: 92px; padding: 8px 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .card b { display: block; font: 600 19px/1 "IBM Plex Mono"; }
+  .card span { display: block; margin-top: 4px; font: 500 9.5px/1.1 "IBM Plex Sans"; color: var(--muted); }
+  section { margin-top: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  section > header { padding: 14px 18px 12px; background: #fbf8f3; border-bottom: 1px solid #eee7dc; }
+  section > header .eyebrow { font: 600 9.5px/1 "IBM Plex Mono"; letter-spacing: .09em; color: #9a8f80; text-transform: uppercase; }
+  section > header h3 { margin: 6px 0 0; font: 600 16px/1.25 "IBM Plex Sans"; }
+  section > .body { padding: 16px 18px 18px; font: 400 13px/1.55 "IBM Plex Sans"; color: var(--body); }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 20px; }
+  li { margin: 4px 0; }
+  code { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: #f4efe6; padding: 1px 5px; border-radius: 4px; }
+  .note { padding: 11px 12px; background: #fdf1ea; border: 1px solid #f2ddcd; border-radius: 8px; font: 500 12px/1.5 "IBM Plex Sans"; color: #8f3413; }
+  .note.muted { background: #faf5ed; border-color: #eee7dc; color: var(--muted); font-weight: 400; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 780px) {
+    nav { display: none; }
+    .two { grid-template-columns: 1fr; }
+    main { padding: 18px 16px 40px; }
+  }
+  .surf { padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: #fbf8f3; }
+  .surf strong { display: block; font: 600 13px "IBM Plex Sans"; }
+  .surf p { margin: 6px 0 0; font: 400 12px/1.5 "IBM Plex Sans"; color: #6f6558; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  th { font: 600 9.5px/1 "IBM Plex Mono"; letter-spacing: .08em; text-transform: uppercase; color: #9a8f80; background: #fbf8f3; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  .arch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; padding: 8px 0 4px; }
+  .node {
+    padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: #fff;
+    font: 500 11.5px/1.3 "IBM Plex Sans"; text-align: center; min-width: 88px;
+  }
+  .node.dark { background: var(--charcoal); color: #f4b183; border-color: var(--charcoal); }
+  .node.sql { background: #e2f0e6; border-color: #c6e2ce; color: #2f6b45; }
+  .node.ember { background: #fdf1ea; border-color: #f2ddcd; color: #8f3413; }
+  .arrow { font: 500 11px "IBM Plex Mono"; color: var(--muted); }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .step n { flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--charcoal); color: #f4b183; font: 600 11px/22px "IBM Plex Mono"; text-align: center; }
+  .todo { display: flex; flex-direction: column; gap: 6px; }
+  .todo li { list-style: none; margin: 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fbf8f3; font: 500 12.5px/1.4 "IBM Plex Sans"; }
+  ol.todo { padding: 0; }
+  .todo em { display: block; margin-top: 3px; font: 400 11px/1.4 "IBM Plex Mono"; color: var(--muted); font-style: normal; }
+  @media print {
+    nav { display: none; }
+    main { max-width: none; padding: 0; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div class="dot"></div>
+        <div class="unit">Medical Unit</div>
+      </div>
+      <h1>Implementation plan</h1>
+      <div class="meta">GCP · RFC + Ops HTML</div>
+    </div>
+    <div class="links">
+      <a class="item" href="#purpose"><span class="pip"></span>Purpose</a>
+      <a class="item" href="#objective"><span class="pip"></span>Objective</a>
+      <a class="item" href="#two-apps"><span class="pip"></span>Two apps</a>
+      <a class="item" href="#public-form"><span class="pip"></span>Public form</a>
+      <a class="item" href="#admin-app"><span class="pip"></span>Admin app</a>
+      <a class="item" href="#qr"><span class="pip"></span>Where is the QR?</a>
+      <a class="item" href="#shape"><span class="pip"></span>Product shape</a>
+      <a class="item" href="#stack"><span class="pip"></span>Tech stack</a>
+      <a class="item" href="#data"><span class="pip"></span>Data layer</a>
+      <a class="item" href="#screens"><span class="pip"></span>Screens</a>
+      <a class="item" href="#gcp"><span class="pip"></span>GCP deploy</a>
+      <a class="item" href="#tests"><span class="pip"></span>Tests</a>
+      <a class="item" href="#order"><span class="pip"></span>Build order</a>
+    </div>
+    <div class="foot">
+      Sources<br>
+      approval-rfc.md<br>
+      Medical Check-In Ops.dc.html<br>
+      README.md
+    </div>
+  </nav>
+
+  <main>
+    <div class="kicker">Build contract</div>
+    <h2 class="page">Medical Resource Check-In &amp; Glide Path</h2>
+    <p class="lead">GCP-hosted React/TypeScript system: a Cloud IAP–protected admin tracker that matches the Ops HTML prototype, plus a public no-login mobile form that replaces Microsoft Forms.</p>
+
+    <div class="cards">
+      <div class="card"><b style="color:#e2691f">2</b><span>Surfaces</span></div>
+      <div class="card"><b>34</b><span>Form questions</span></div>
+      <div class="card"><b>6</b><span>Admin screens</span></div>
+      <div class="card"><b style="color:#3f8f5e">GCP</b><span>Cloud Run + SQL</span></div>
+    </div>
+
+    <p class="note" style="margin-top:16px">Behavior follows <code>approval-rfc.md</code> (RFC wins). Appearance follows <code>Medical Check-In Ops.dc.html</code> (HTML wins). Recreate screens — do not ship the prototype markup or <code>support.js</code>.</p>
+    <p class="note muted">The RFC’s Microsoft 365 / Forms / Excel target is replaced by GCP. All 34 questions, matching, date math, privacy, and section-9 tests still apply.</p>
+
+    <section id="purpose">
+      <header>
+        <div class="eyebrow">Why this exists</div>
+        <h3>Purpose</h3>
+      </header>
+      <div class="body">
+        <p>Give the Medical Unit a single, reliable place to check in wildfire medical resources (ambulances, REMS teams, EMPFs, MEDL, and related positions) and see who is on the incident, where they are assigned, and when they demobilize — without copying rows between Microsoft Forms and Excel, and without storing clinical or patient data.</p>
+        <p>Field personnel scan an incident QR and each submit one 34-question form for themselves. The tracker stores that response once, groups people under the resource they were ordered on, and lets staff add only the operational facts the form cannot know (Division, Camp, Call Sign, extensions, document status).</p>
+      </div>
+    </section>
+
+    <section id="objective">
+      <header>
+        <div class="eyebrow">What success looks like</div>
+        <h3>Objective</h3>
+      </header>
+      <div class="body">
+        <ul>
+          <li>Replace the manual Forms-plus-spreadsheet workflow with a GCP-hosted public check-in form and an IAP-protected admin tracker.</li>
+          <li>Enforce one response = one person, safe resource matching (no silent merges), and separate resource vs personnel counts.</li>
+          <li>Calculate Last Work Day and demobilization dates consistently, and surface them on a one-page Glide Path.</li>
+          <li>Keep original answers immutable; store admin corrections as overrides; store document <strong>status</strong> only (files stay in the Fire email).</li>
+          <li>Protect restricted personal and contractual fields from roster and Glide Path views.</li>
+          <li>Make an incident closable and reusable as a clean package with no leftover people, responses, or ids.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="two-apps">
+      <header>
+        <div class="eyebrow">Easy overview</div>
+        <h3>Two apps — remember only this</h3>
+      </header>
+      <div class="body">
+        <div class="two">
+          <div class="surf">
+            <strong>Public form</strong>
+            <p>“I check myself in on my phone.”</p>
+          </div>
+          <div class="surf">
+            <strong>Admin app</strong>
+            <p>“We manage everyone who checked in.”</p>
+          </div>
+        </div>
+        <p style="margin-top:14px">Same incident. Same database. Different doors — so field people cannot open the staff office.</p>
+        <div class="arch" style="justify-content:flex-start;margin-top:8px">
+          <div class="node ember">Phone</div>
+          <span class="arrow">→ public form →</span>
+          <div class="node sql">Saved response</div>
+          <span class="arrow">→</span>
+          <div class="node dark">Admin roster</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="public-form">
+      <header>
+        <div class="eyebrow">Field personnel</div>
+        <h3>Public form — purpose and how to use</h3>
+      </header>
+      <div class="body">
+        <p><strong>Purpose:</strong> Let each person check themselves in from a phone, with no login. One person = one form. They cannot see the roster or anyone else’s answers. No file uploads.</p>
+        <p><strong>How to use it:</strong></p>
+        <ol>
+          <li>Scan the printed QR (or open the form link). That opens this form — for example Bearclaw Creek, Step 1 of 6.</li>
+          <li>Read the orange note: check in for yourself only; no patient/clinical data.</li>
+          <li>Complete all 6 steps (34 questions): order &amp; identity → position → dates → vehicle → home agency → certification.</li>
+          <li>Tap <strong>Submit check-in</strong>.</li>
+          <li>On the confirmation screen, email Contract, Driver’s License, NREMT, State license (and Medical Director letter if Narcotics) to the Fire email shown — do not upload files in the app.</li>
+        </ol>
+        <p class="note muted" style="margin-bottom:0">Every ambulance and REMS team member submits separately. A four-person team = four form submissions.</p>
+      </div>
+    </section>
+
+    <section id="admin-app">
+      <header>
+        <div class="eyebrow">Medical Unit staff</div>
+        <h3>Admin app — purpose and how to use</h3>
+      </header>
+      <div class="body">
+        <p><strong>Purpose:</strong> See everyone who checked in, group them under the right resource, add Division / Camp / Call Sign / extensions, fix bad matches, track document status, and see who demobilizes when. Staff never change what the person typed — they only add work details on top.</p>
+        <p><strong>How to use it (daily):</strong></p>
+        <ol>
+          <li>Open Admin (Google / Cloud IAP in production). Confirm the right incident.</li>
+          <li>Go to <strong>Check-in form</strong> → print or share the QR so field people can use the public form.</li>
+          <li><strong>Roster</strong> — people appear under each resource. Filter All / Active / Enroute / Needs Review. Click a row to open the person drawer.</li>
+          <li><strong>Person drawer</strong> — Submitted answers are locked. Ember-bordered fields are what staff may edit (Division, Camp, effective dates, extension, status). Calculated dates and Glide state update live. Document chips cycle status only.</li>
+          <li><strong>Review queue</strong> — if the system cannot safely match a person to a resource, Link them or Create provisional. Nothing merges by itself.</li>
+          <li><strong>Documents</strong> — mark Received / Verified when mail arrives at the Fire email. Files stay in email, not in the app.</li>
+          <li><strong>Glide Path</strong> — see who is leaving soon; print landscape for briefs.</li>
+          <li>When the incident ends — <strong>Close incident</strong> (stops the form). Later create a <strong>clean incident</strong> for the next fire (no old people or ids).</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="qr">
+      <header>
+        <div class="eyebrow">Common confusion</div>
+        <h3>Where is the QR?</h3>
+      </header>
+      <div class="body">
+        <p class="note">The QR is <strong>not on the public form</strong>. The QR is the door that <strong>opens</strong> the public form.</p>
+        <div class="two" style="margin-top:12px">
+          <div class="surf">
+            <strong>QR code lives here</strong>
+            <p>Admin app → <strong>Check-in form</strong> screen. Staff print it or share the link. Local example: <code>http://localhost:5174/c/bearclaw-creek</code></p>
+          </div>
+          <div class="surf">
+            <strong>After you scan</strong>
+            <p>Phone opens the public form (Medical Check-In → incident name → Step 1 of 6). No QR scanner button appears on that page — you already arrived.</p>
+          </div>
+        </div>
+        <ol style="margin-top:14px;margin-bottom:0">
+          <li>Staff print QR from Admin.</li>
+          <li>Field person scans with the phone camera.</li>
+          <li>Phone opens the public form.</li>
+          <li>Person fills boxes → Continue → … → Submit.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="shape">
+      <header>
+        <div class="eyebrow">Architecture</div>
+        <h3>Product shape</h3>
+      </header>
+      <div class="body">
+        <div class="two">
+          <div class="surf">
+            <strong>Public check-in</strong>
+            <p>No Microsoft or Google login. QR opens only this URL. One person per submit. Respondents cannot view, search, or export others’ data.</p>
+          </div>
+          <div class="surf">
+            <strong>Admin tracker</strong>
+            <p>Google accounts via Cloud IAP. Roster, person drawer, Glide Path, Review queue, Documents, Check-in / QR preview.</p>
+          </div>
+        </div>
+        <p style="margin:16px 0 8px;font:600 9.5px/1 'IBM Plex Mono';letter-spacing:.09em;color:#9a8f80;text-transform:uppercase">Request path</p>
+        <div class="arch">
+          <div class="node">Field phone</div>
+          <span class="arrow">QR URL →</span>
+          <div class="node ember">HTTPS LB</div>
+          <span class="arrow">→</span>
+          <div class="node">Cloud Run checkin</div>
+          <span class="arrow">→</span>
+          <div class="node sql">Cloud SQL Postgres</div>
+        </div>
+        <div class="arch" style="margin-top:6px">
+          <div class="node">Staff Google</div>
+          <span class="arrow">HTTPS →</span>
+          <div class="node dark">Cloud IAP</div>
+          <span class="arrow">→</span>
+          <div class="node">Cloud Run admin</div>
+          <span class="arrow">→</span>
+          <div class="node sql">Cloud SQL Postgres</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="stack">
+      <header>
+        <div class="eyebrow">README default · no component library</div>
+        <h3>Recommended tech stack</h3>
+      </header>
+      <div class="body" style="padding:0">
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>Choice</th><th>Why</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>UI</td><td>React 18 + TypeScript + Vite</td><td>Specified when the repo has no framework</td></tr>
+            <tr><td>Styling</td><td>CSS modules + shared tokens</td><td>Pixel-faithful; ember only for active nav + admin inputs</td></tr>
+            <tr><td>Fonts</td><td>IBM Plex Sans + IBM Plex Mono</td><td>Visual system</td></tr>
+            <tr><td>API</td><td>Hono or Fastify on Node 20, TypeScript</td><td>Small, Cloud Run–friendly</td></tr>
+            <tr><td>Domain</td><td>Shared <code>packages/domain</code></td><td>Matching, dates, glide, form contract — tested without UI</td></tr>
+            <tr><td>ORM</td><td>Drizzle + Postgres</td><td>Typed SQL; append-only <code>Response.payload</code> as JSONB</td></tr>
+            <tr><td>DB</td><td>Cloud SQL PostgreSQL 16</td><td>Relational matching, audit, incidents</td></tr>
+            <tr><td>Auth</td><td>Cloud IAP on admin only</td><td>IAP email header is the audit actor</td></tr>
+            <tr><td>Public form</td><td>Separate Cloud Run, no IAP</td><td>Unauthenticated submit; no admin routes</td></tr>
+            <tr><td>QR</td><td>Server-generated PNG</td><td>Encodes check-in URL only</td></tr>
+            <tr><td>Files</td><td>None</td><td>No GCS buckets for documents; status only</td></tr>
+            <tr><td>Secrets</td><td>Secret Manager</td><td>DB URL, signing keys</td></tr>
+            <tr><td>Deploy</td><td>Cloud Build → Artifact Registry → Cloud Run</td><td>Two images: <code>admin</code>, <code>checkin</code></td></tr>
+            <tr><td>Observability</td><td>Cloud Logging / Error Reporting</td><td>Never log restricted PII or response payloads</td></tr>
+          </tbody>
+        </table>
+        <div class="body">
+          <p style="font:600 12.5px 'IBM Plex Sans';margin-bottom:8px">Monorepo (npm workspaces)</p>
+          <ul>
+            <li><code>apps/admin</code> — IAP SPA: all six admin screens</li>
+            <li><code>apps/checkin</code> — public 6-section stepper (real submit)</li>
+            <li><code>apps/api</code> — one API binary; admin image mounts IAP routes; checkin image mounts public submit + incident intro only</li>
+            <li><code>packages/domain</code> — RFC rules</li>
+            <li><code>packages/db</code> — schema + migrations</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="data">
+      <header>
+        <div class="eyebrow">Postgres · RFC model</div>
+        <h3>Data layer</h3>
+      </header>
+      <div class="body">
+        <p>Tables: <code>Incident</code>, <code>Response</code>, <code>ResourceInstance</code>, <code>Person</code>, <code>DocumentStatus</code>, <code>AuditEvent</code>.</p>
+        <p>Enforced in domain + DB, not only UI:</p>
+        <ol>
+          <li>One <code>Response</code> → one <code>Person</code>. Unique on <code>(incidentId, formsResponseId)</code>.</li>
+          <li>Match key: incident + normalized Resource Order # + Company + Date Assigned. Order # alone is never enough.</li>
+          <li>1 match → link. 0 matches → provisional resource. 2+ → Needs Resource Review; no silent merge.</li>
+          <li><code>Response.payload</code> is immutable JSONB. Admin writes overrides only. Clearing an override restores submitted values.</li>
+          <li>Calculated values are never stored: last work day, DMB start, workdays remaining, glide state.</li>
+          <li>Formula: <code>LWD = FWD + length − 1 + extensionDays</code>; <code>DMB = LWD + 1</code>. Reassignment is metadata only.</li>
+          <li>Narcotics in Q10 → required Medical Director letter row.</li>
+          <li>Restricted fields excluded from roster / Glide Path APIs (address, plate, emergency contacts, EERA, medical director, supervisor phone).</li>
+        </ol>
+        <p>Normalize Resource Order # in domain while storing <code>resourceOrderRaw</code> unchanged. Statuses, document states, and glide hex colors follow the README.</p>
+      </div>
+    </section>
+
+    <section id="screens">
+      <header>
+        <div class="eyebrow">Ops HTML layout · live data</div>
+        <h3>Screens</h3>
+      </header>
+      <div class="body">
+        <p>Sidebar + header counters as in the prototype. Nav: Roster, Glide Path, Review queue, Documents, Check-in.</p>
+        <ol>
+          <li><strong>Roster</strong> — resources as groups; person rows; chips All / Active / Enroute / Needs Review; horizontal scroll under ~780px; row opens 340px drawer.</li>
+          <li><strong>Person drawer</strong> — Submitted (locked, dashed), Admin (3px <code>#e2691f</code> left border only here + nav), Calculated (live), Documents (cycle six statuses).</li>
+          <li><strong>Glide Path</strong> — 14-day grid, 260px frozen identity column, LWD/DMB marks, today highlight, footer totals; print CSS landscape, one page wide.</li>
+          <li><strong>Review queue</strong> — conflict reason, candidates + Link, “Create provisional resource”, every decision → <code>AuditEvent</code>.</li>
+          <li><strong>Documents</strong> — people × Contract, Driver’s License, NREMT, Med Director letter. Footer: files live in Fire email.</li>
+          <li><strong>Check-in (admin)</strong> — phone-frame preview + real QR + section list. Public app is the live 6-step form (Q1–4, 5–10, 11–18, 17–21, 22–30, 31–34). Restricted fields grey + “Restricted”. Hit targets ≥ 44px. Intro/confirm show Fire email + checklist. Preserve <strong>Extrication Equiptment</strong> and <strong>Nerv</strong> verbatim.</li>
+        </ol>
+        <p>Minimal incident controls (RFC §2): name, number, op period, timezone, Fire email, open/close. Closed incident: public form returns gone. Cloning a clean incident copies no people.</p>
+        <p>Synthetic seed: Bearclaw Creek <code>OR-WIF-000412</code>, nine people / five resources, today pinable to <code>2026-08-30</code>.</p>
+      </div>
+    </section>
+
+    <section id="gcp">
+      <header>
+        <div class="eyebrow">Target environment</div>
+        <h3>GCP deployment</h3>
+      </header>
+      <div class="body">
+        <ul>
+          <li><strong>Project</strong> — one GCP project; region set at first deploy (e.g. <code>us-west1</code>).</li>
+          <li><strong>Cloud SQL</strong> — private IP; Cloud Run via Unix socket / Cloud SQL connector. No public SQL.</li>
+          <li><strong>Load Balancer + Cloud Armor</strong> — rate-limit public POST.</li>
+          <li><strong>IAP</strong> — admin Cloud Run (or LB backend). Allowlist Medical Unit Google accounts. API trusts <code>X-Goog-Authenticated-User-Email</code> as <code>AuditEvent.actor</code>.</li>
+          <li><strong>Check-in Cloud Run</strong> — unauthenticated; CORS own origin only; no list/export endpoints.</li>
+          <li><strong>IAM</strong> — least privilege; no document buckets.</li>
+          <li><strong>CI</strong> — Cloud Build on main → migrate → deploy both services.</li>
+          <li><strong>Close / reuse</strong> — create incident from a template with empty operational tables; never copy responses.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="tests">
+      <header>
+        <div class="eyebrow">RFC §9</div>
+        <h3>Automated test suite</h3>
+      </header>
+      <div class="body">
+        <p>Vitest over synthetic fixtures in <code>packages/domain</code> plus API integration against test Postgres:</p>
+        <ul>
+          <li>One response → one person</li>
+          <li>Two Ambos, one match → one resource, two people</li>
+          <li>Four REMS, one match → one resource, four people</li>
+          <li>Ambiguous → review, no merge</li>
+          <li>Later rotation, same order # → new instance</li>
+          <li>Admin edit does not mutate <code>Response.payload</code></li>
+          <li>Date math + glide thresholds (Green 8+, Yellow 4–7, Red 2–3, LWD 1, DMB 0, REVIEW invalid)</li>
+          <li>Separate resource vs personnel counts</li>
+          <li>Narcotics → Med Director letter required</li>
+          <li>No file / upload / public document-link fields in schema or logs</li>
+          <li>Concurrent submit load: no lost rows, duplicate people, or bad merges</li>
+          <li>Close + new incident: no old ids / responses</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="order">
+      <header>
+        <div class="eyebrow">Delivery</div>
+        <h3>Implementation order</h3>
+      </header>
+      <div class="body">
+        <div class="steps">
+          <div class="step"><n>1</n><div>Repo, tokens, domain package + tests (matching, dates, glide, docs).</div></div>
+          <div class="step"><n>2</n><div>Drizzle schema, migrations, seed Bearclaw Creek.</div></div>
+          <div class="step"><n>3</n><div>API: incidents, submit, match, people, overrides, review decisions, documents, audit.</div></div>
+          <div class="step"><n>4</n><div>Admin UI to match the HTML (Roster + drawer first, then Glide, Review, Docs, Check-in/QR).</div></div>
+          <div class="step"><n>5</n><div>Public check-in stepper + confirmation.</div></div>
+          <div class="step"><n>6</n><div>Print stylesheet; operator one-pager in-app or <code>docs/operator-guide.md</code>.</div></div>
+          <div class="step"><n>7</n><div>GCP: Cloud SQL, two Cloud Run services, IAP, load balancer, Cloud Build.</div></div>
+        </div>
+        <p class="note muted" style="margin-top:14px;margin-bottom:0">Out of scope (RFC): no clinical data, no file storage / OCR / inbox scrape, no ICS-206 publish, no public roster access.</p>
+      </div>
+    </section>
+
+    <section>
+      <header>
+        <div class="eyebrow">Work breakdown</div>
+        <h3>Todos</h3>
+      </header>
+      <div class="body">
+        <ol class="todo">
+          <li>Domain core<em>Monorepo + packages/domain: form contract, matching, date math, glide states, document rules, RFC §9 unit tests</em></li>
+          <li>DB + API<em>Drizzle/Postgres schema, migrations, seed, and API (submit, match, overrides, review, documents, audit)</em></li>
+          <li>Admin UI<em>SPA screens matching the HTML prototype (Roster/drawer, Glide Path + print, Review, Documents, Check-in/QR)</em></li>
+          <li>Public check-in<em>6-section mobile form (no login) with Fire email, checklist, and verbatim choice labels</em></li>
+          <li>GCP deploy<em>Cloud Run (admin + IAP, checkin public), Cloud SQL, LB/Armor, Secret Manager, Cloud Build</em></li>
+        </ol>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

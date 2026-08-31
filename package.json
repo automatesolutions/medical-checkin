@@ -1,0 +1,20 @@
+{
+  "name": "medical-check-in",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace=@medical/domain && npm run test --workspace=@medical/api",
+    "dev": "npm run dev --workspace=@medical/api",
+    "dev:admin": "npm run dev --workspace=@medical/admin",
+    "dev:checkin": "npm run dev --workspace=@medical/checkin",
+    "db:migrate": "npm run migrate --workspace=@medical/db",
+    "db:seed": "npm run seed --workspace=@medical/db",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

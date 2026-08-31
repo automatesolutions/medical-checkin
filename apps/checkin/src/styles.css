@@ -1,0 +1,20 @@
+html, body, #root { margin: 0; min-height: 100%; background: #f6f2ec; font-family: "IBM Plex Sans", system-ui, sans-serif; color: #1c1814; }
+* { box-sizing: border-box; }
+.shell { max-width: 430px; margin: 0 auto; min-height: 100vh; background: #fbf8f3; }
+.hdr { padding: 20px 18px; background: #1c1814; color: #fff; }
+label { display: block; font: 500 13px/1.35 "IBM Plex Sans"; color: #3a332b; margin-top: 14px; }
+input, select, textarea { width: 100%; margin-top: 6px; padding: 12px 11px; min-height: 44px; border: 1px solid #e3dbcf; border-radius: 8px; font: 400 16px "IBM Plex Sans"; background: #fff; }
+.checks { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.checks label { display: flex; gap: 10px; align-items: center; margin: 0; font-weight: 400; min-height: 44px; }
+.checks input { width: auto; min-height: 22px; }
+.err { color: #a3381f; font-size: 12px; margin-top: 4px; }
+.row { display: flex; gap: 8px; padding: 16px 18px 28px; }
+.btn { min-height: 44px; padding: 11px 15px; border-radius: 9px; font: 600 13px "IBM Plex Sans"; cursor: pointer; }
+.primary { flex: 1; border: 0; background: #e2691f; color: #fff; }
+.primary:hover { background: #b8461d; }
+.ghost { border: 1px solid #e0d6c7; background: #fff; color: #6f6558; }
+.note { padding: 11px 12px; background: #fdf1ea; border: 1px solid #f2ddcd; border-radius: 8px; font: 500 12.5px/1.5 "IBM Plex Sans"; color: #8f3413; }
+.foot { padding: 0 18px 20px; font: 400 11px/1.5 "IBM Plex Mono"; color: #9a8f80; }
+.pips { display: flex; gap: 3px; margin-top: 8px; }
+.pips i { flex: 1; height: 3px; border-radius: 2px; background: #e3dbcf; }
+.pips i.on { background: #e2691f; }
