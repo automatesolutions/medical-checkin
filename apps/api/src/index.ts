@@ -6,16 +6,34 @@ const port = Number(process.env.PORT || 8787);
 const hostname = "0.0.0.0";
 
 let starting = true;
+let stage = "boot";
 let lastError: string | null = null;
 
 function bootPayload() {
   return {
     ok: true,
     starting,
+    stage,
     databaseUrlSet: Boolean(process.env.DATABASE_URL),
     usesCloudSqlSocket: (process.env.DATABASE_URL || "").includes("/cloudsql/"),
     error: lastError
   };
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
 }
 
 // Bind PORT immediately — before DB / app imports — so Cloud Run startup checks pass.
@@ -44,23 +62,35 @@ async function bootstrap() {
   );
 
   try {
+    stage = "importing";
     const { getDb, incidents, migrate, seed } = await import("@medical/db");
     const { createApp } = await import("./app.js");
 
-    await migrate();
+    stage = "migrating";
+    console.log("bootstrap: migrate start");
+    await withTimeout(migrate(), 20000, "migrate");
+    console.log("bootstrap: migrate done");
+
     if (process.env.AUTO_SEED !== "0") {
+      stage = "seeding";
       const { db } = await getDb();
-      const rows = await db.select().from(incidents);
-      if (rows.length === 0) await seed();
+      const rows = await withTimeout(db.select().from(incidents), 15000, "seed-check");
+      if (rows.length === 0) {
+        await withTimeout(seed(), 30000, "seed");
+      }
+      console.log("bootstrap: seed done");
     }
 
+    stage = "creating-app";
     const { app } = await createApp();
     listener = getRequestListener(app.fetch);
     starting = false;
+    stage = "ready";
     lastError = null;
     console.log("database init complete");
   } catch (err) {
     lastError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    stage = "failed";
     console.error("startup bootstrap failed", err);
   }
 }
