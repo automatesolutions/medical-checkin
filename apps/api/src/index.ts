@@ -1,11 +1,24 @@
-import { serve } from "@hono/node-server";
-import { getDb, incidents, migrate, seed } from "@medical/db";
-import { createApp } from "./app.js";
+import { createServer } from "node:http";
+import { Hono } from "hono";
+import { getRequestListener } from "@hono/node-server";
 
 const port = Number(process.env.PORT || 8787);
 const hostname = "0.0.0.0";
 
-function logDbEnv() {
+// Bind PORT immediately — before DB / app imports — so Cloud Run startup checks pass.
+const boot = new Hono();
+boot.get("/health", (c) => c.json({ ok: true, starting: true }));
+boot.all("*", (c) => c.json({ ok: true, starting: true }));
+
+let listener = getRequestListener(boot.fetch);
+const server = createServer((req, res) => listener(req, res));
+
+server.listen(port, hostname, () => {
+  console.log(`api listening on ${hostname}:${port}`);
+  void bootstrap();
+});
+
+async function bootstrap() {
   const url = process.env.DATABASE_URL || "";
   console.log(
     JSON.stringify({
@@ -16,25 +29,22 @@ function logDbEnv() {
       serviceMode: process.env.SERVICE_MODE || "all"
     })
   );
-}
 
-logDbEnv();
+  try {
+    const { getDb, incidents, migrate, seed } = await import("@medical/db");
+    const { createApp } = await import("./app.js");
 
-// Open PORT before DB work so Cloud Run startup checks can succeed.
-const { app } = await createApp();
-serve({ fetch: app.fetch, port, hostname }, () => {
-  console.log(`api listening on ${hostname}:${port} mode=${process.env.SERVICE_MODE || "all"}`);
-});
+    await migrate();
+    if (process.env.AUTO_SEED !== "0") {
+      const { db } = await getDb();
+      const rows = await db.select().from(incidents);
+      if (rows.length === 0) await seed();
+    }
 
-try {
-  await migrate();
-  if (process.env.AUTO_SEED !== "0") {
-    const { db } = await getDb();
-    const rows = await db.select().from(incidents);
-    if (rows.length === 0) await seed();
+    const { app } = await createApp();
+    listener = getRequestListener(app.fetch);
+    console.log("database init complete");
+  } catch (err) {
+    console.error("startup bootstrap failed", err);
   }
-  console.log("database init complete");
-} catch (err) {
-  console.error("startup database init failed", err);
-  // Stay up so revision logs remain available; API routes that need DB will error.
 }

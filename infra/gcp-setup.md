@@ -23,7 +23,9 @@ gcloud sql databases create checkin --instance=medical-checkin-pg
 
 Put the Cloud SQL Unix socket URL in Secret Manager as `DATABASE_URL`:
 
-`postgres://USER:PASS@/checkin?host=/cloudsql/PROJECT:us-west1:medical-checkin-pg`
+`postgres://USER:PASS@localhost/checkin?host=/cloudsql/PROJECT:us-central1:medical-checkin-pg`
+
+(Use `localhost` as the hostname so Node can parse the URL; the `host=/cloudsql/...` query param is what Cloud Run uses. URL-encode special characters in PASS.)
 
 ## 4. Cloud Run
 

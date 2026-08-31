@@ -14,17 +14,50 @@ export function resetDbCache() {
   cached = null;
 }
 
-export async function getDb(): Promise<{ db: Db; migrateSql: (sql: string) => Promise<void> }> {
-  if (cached) return cached;
-  const url = process.env.DATABASE_URL;
-  if (url && (url.startsWith("postgres://") || url.startsWith("postgresql://"))) {
-    // Cloud Run + Cloud SQL Unix socket: keep pool small and fail fast on connect.
-    const client = postgres(url, {
+/** Cloud SQL docs use postgres://user:pass@/db?host=/cloudsql/... — Node's URL parser
+ * requires a hostname, so inject localhost before parsing. */
+export function normalizeDatabaseUrl(url: string): string {
+  return url.replace(/^(postgres(?:ql)?:\/\/[^@]+)@\//, "$1@localhost/");
+}
+
+function createPostgresClient(rawUrl: string) {
+  const url = normalizeDatabaseUrl(rawUrl);
+  const parsed = new URL(url);
+  const socketOrHost = parsed.searchParams.get("host");
+  const database = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
+  const user = decodeURIComponent(parsed.username);
+  const password = decodeURIComponent(parsed.password);
+  // Unix socket path from ?host=/cloudsql/PROJECT:REGION:INSTANCE must win over localhost.
+  if (socketOrHost?.startsWith("/")) {
+    return postgres({
       max: 1,
       idle_timeout: 20,
       connect_timeout: 10,
-      prepare: false
+      prepare: false,
+      database,
+      user,
+      password,
+      host: socketOrHost
     });
+  }
+  return postgres({
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    prepare: false,
+    database,
+    user,
+    password,
+    host: parsed.hostname,
+    port: Number(parsed.port || 5432)
+  });
+}
+
+export async function getDb(): Promise<{ db: Db; migrateSql: (sql: string) => Promise<void> }> {
+  if (cached) return cached;
+  const raw = process.env.DATABASE_URL;
+  if (raw && (raw.startsWith("postgres://") || raw.startsWith("postgresql://"))) {
+    const client = createPostgresClient(raw);
     const db = drizzlePg(client, { schema });
     cached = {
       db,

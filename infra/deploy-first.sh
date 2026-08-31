@@ -83,7 +83,9 @@ else
 fi
 
 CONNECTION_NAME="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
-DATABASE_URL="postgres://${DB_USER}:${DB_APP_PASSWORD}@/${DB_NAME}?host=/cloudsql/${CONNECTION_NAME}"
+# Use @localhost/ so Node/postgres.js can parse the URL; ?host=/cloudsql/... selects the socket.
+DB_PASS_ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$DB_APP_PASSWORD")
+DATABASE_URL="postgres://${DB_USER}:${DB_PASS_ENC}@localhost/${DB_NAME}?host=/cloudsql/${CONNECTION_NAME}"
 
 echo "==> Secret DATABASE_URL"
 if gcloud secrets describe DATABASE_URL >/dev/null 2>&1; then
