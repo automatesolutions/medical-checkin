@@ -17,8 +17,14 @@ export function resetDbCache() {
 export async function getDb(): Promise<{ db: Db; migrateSql: (sql: string) => Promise<void> }> {
   if (cached) return cached;
   const url = process.env.DATABASE_URL;
-  if (url && url.startsWith("postgres")) {
-    const client = postgres(url, { max: 8, connect_timeout: 15 });
+  if (url && (url.startsWith("postgres://") || url.startsWith("postgresql://"))) {
+    // Cloud Run + Cloud SQL Unix socket: keep pool small and fail fast on connect.
+    const client = postgres(url, {
+      max: 1,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare: false
+    });
     const db = drizzlePg(client, { schema });
     cached = {
       db,
