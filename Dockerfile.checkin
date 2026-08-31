@@ -1,0 +1,21 @@
+# Root Dockerfile so Cloud Run "Connect repo" uses repo root as build context.
+# (UI path infra/Dockerfile.checkin would set context to infra/ and break COPY paths.)
+FROM node:20-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY packages ./packages
+COPY apps ./apps
+RUN npm install
+RUN npm run build --workspace=@medical/checkin
+
+FROM node:20-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production SERVICE_MODE=checkin PORT=8080
+COPY package.json package-lock.json* ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+COPY --from=build /app/apps/checkin/dist ./apps/checkin/dist
+RUN npm install --omit=dev
+ENV STATIC_DIR=/app/apps/checkin/dist
+EXPOSE 8080
+CMD ["npx", "tsx", "apps/api/src/index.ts"]
