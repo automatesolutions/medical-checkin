@@ -18,7 +18,7 @@ export async function getDb(): Promise<{ db: Db; migrateSql: (sql: string) => Pr
   if (cached) return cached;
   const url = process.env.DATABASE_URL;
   if (url && url.startsWith("postgres")) {
-    const client = postgres(url, { max: 8 });
+    const client = postgres(url, { max: 8, connect_timeout: 15 });
     const db = drizzlePg(client, { schema });
     cached = {
       db,
@@ -28,9 +28,17 @@ export async function getDb(): Promise<{ db: Db; migrateSql: (sql: string) => Pr
     };
     return cached;
   }
-  const file = process.env.PGLITE_PATH || resolve(process.cwd(), ".data/checkin");
-  mkdirSync(dirname(file), { recursive: true });
-  const pglite = new PGlite(file);
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "DATABASE_URL must be set to a postgres:// URL in production (Cloud SQL Unix socket form recommended)."
+    );
+  }
+  // Local/dev fallback: in-memory when unset, or file path when PGLITE_PATH is set.
+  const file = process.env.PGLITE_PATH;
+  if (file) {
+    mkdirSync(dirname(resolve(file)), { recursive: true });
+  }
+  const pglite = file ? new PGlite(resolve(file)) : new PGlite();
   await pglite.waitReady;
   const db = drizzlePglite(pglite, { schema });
   cached = {

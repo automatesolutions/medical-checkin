@@ -16,4 +16,4 @@ COPY --from=build /app/apps/checkin/dist ./apps/checkin/dist
 RUN npm install --omit=dev
 ENV STATIC_DIR=/app/apps/checkin/dist
 EXPOSE 8080
-CMD ["npx", "tsx", "apps/api/src/index.ts"]
+CMD ["npm", "run", "start", "--workspace=@medical/api"]
