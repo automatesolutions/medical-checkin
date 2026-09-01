@@ -10,6 +10,7 @@ const hostname = "0.0.0.0";
 let starting = true;
 let stage = "boot";
 let lastError: string | null = null;
+let bootstrapping = false;
 
 function bootPayload() {
   return {
@@ -36,6 +37,35 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
       }
     );
   });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientDbError(err: unknown) {
+  const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err);
+  return /CONNECT_TIMEOUT|ECONNREFUSED|ETIMEDOUT|ECONNRESET|timeout|ENOTFOUND|socket/i.test(msg);
+}
+
+async function withRetries<T>(label: string, attempts: number, fn: () => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    stage = `${label}-${i}/${attempts}`;
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      lastError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      console.error(`bootstrap ${label} attempt ${i}/${attempts} failed`, err);
+      if (i < attempts && isTransientDbError(err)) {
+        await sleep(2500 * i);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw last;
 }
 
 function staticResponse(reqPath: string): Response | null {
@@ -81,6 +111,9 @@ server.listen(port, hostname, () => {
 });
 
 async function bootstrap() {
+  if (bootstrapping || !starting) return;
+  bootstrapping = true;
+
   const url = process.env.DATABASE_URL || "";
   console.log(
     JSON.stringify({
@@ -95,24 +128,26 @@ async function bootstrap() {
   try {
     stage = "importing-db";
     console.log("bootstrap: import @medical/db");
-    const { getDb, incidents, migrate, seed } = await withTimeout(
+    const { getDb, incidents, migrate, seed, resetDbCache } = await withTimeout(
       import("@medical/db"),
       15000,
       "import @medical/db"
     );
 
-    stage = "migrating";
-    console.log("bootstrap: migrate start");
-    await withTimeout(migrate(), 20000, "migrate");
+    await withRetries("migrate", 6, async () => {
+      resetDbCache();
+      await withTimeout(migrate(), 45000, "migrate");
+    });
     console.log("bootstrap: migrate done");
 
     if (process.env.AUTO_SEED !== "0") {
-      stage = "seeding";
-      const { db } = await getDb();
-      const rows = await withTimeout(db.select().from(incidents), 15000, "seed-check");
-      if (rows.length === 0) {
-        await withTimeout(seed(), 30000, "seed");
-      }
+      await withRetries("seed", 4, async () => {
+        const { db } = await getDb();
+        const rows = await withTimeout(db.select().from(incidents), 20000, "seed-check");
+        if (rows.length === 0) {
+          await withTimeout(seed(), 45000, "seed");
+        }
+      });
       console.log("bootstrap: seed done");
     }
 
@@ -131,5 +166,12 @@ async function bootstrap() {
     lastError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     stage = "failed";
     console.error("startup bootstrap failed", err);
+    // Keep retrying — Cloud SQL may still be starting after a stop/cold start.
+    setTimeout(() => {
+      bootstrapping = false;
+      if (starting) void bootstrap();
+    }, 15000);
+    return;
   }
+  bootstrapping = false;
 }

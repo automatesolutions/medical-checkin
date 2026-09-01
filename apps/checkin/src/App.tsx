@@ -28,21 +28,34 @@ export function App() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch(`/api/public/incidents/${slug}`)
-      .then(async (r) => {
+    let cancelled = false;
+    async function load(attempt = 1) {
+      try {
+        const r = await fetch(`/api/public/incidents/${slug}`);
         const body = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          const detail = body.error || body.stage || r.statusText;
-          throw new Error(
-            r.status === 503
-              ? `Service starting up (${detail}). Refresh in a few seconds.`
-              : detail || "Not found"
-          );
+        if (cancelled) return;
+        if (r.status === 503) {
+          const detail = body.error || body.stage || "API not ready";
+          setError(`Connecting to database… (${detail}). Retrying automatically.`);
+          if (attempt < 30) window.setTimeout(() => void load(attempt + 1), 3000);
+          return;
         }
-        return body;
-      })
-      .then(setIncident)
-      .catch((e) => setError(e.message));
+        if (!r.ok) {
+          setError(body.error || r.statusText || "Not found");
+          return;
+        }
+        setError("");
+        setIncident(body);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Network error");
+        if (attempt < 30) window.setTimeout(() => void load(attempt + 1), 3000);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   function set<K extends keyof FormPayload>(k: K, v: FormPayload[K]) {

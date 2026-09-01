@@ -26,11 +26,12 @@ function createPostgresClient(rawUrl: string) {
   const user = decodeURIComponent(parsed.username);
   const password = decodeURIComponent(parsed.password);
   // Unix socket path from ?host=/cloudsql/PROJECT:REGION:INSTANCE must win over localhost.
+  // Cloud SQL Unix sockets can be slow right after instance / Cloud Run cold start.
   if (socketOrHost?.startsWith("/")) {
     return postgres({
       max: 1,
       idle_timeout: 20,
-      connect_timeout: 10,
+      connect_timeout: 30,
       prepare: false,
       database,
       user,
@@ -41,7 +42,7 @@ function createPostgresClient(rawUrl: string) {
   return postgres({
     max: 1,
     idle_timeout: 20,
-    connect_timeout: 10,
+    connect_timeout: 15,
     prepare: false,
     database,
     user,
