@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOCUMENT_STYLE, DOCUMENT_TYPES, FIELD_LABELS, FORM_SECTIONS, GLIDE_COLORS, formatShortDate, type GlideState } from "@medical/domain";
 import { api } from "./api";
 
 type Tab = "roster" | "glide" | "review" | "docs" | "checkin";
+const POLL_MS = 8000;
 const PAGES: Record<Tab, { kicker: string; title: string; sub: string }> = {
   roster: { kicker: "Working tracker", title: "Personnel roster", sub: "One row per person, grouped under the resource they were ordered on. Submitted values are locked; the ember-marked fields are the only ones the Medical Unit edits." },
   glide: { kicker: "Rolling date view", title: "Glide Path", sub: "Workdays remaining per person, grouped by resource. Landscape, one page wide, legend included." },
@@ -10,6 +11,40 @@ const PAGES: Record<Tab, { kicker: string; title: string; sub: string }> = {
   docs: { kicker: "Status only", title: "Document tracker", sub: "Files stay in the Fire email. This records status, verifier, and timestamp — nothing else." },
   checkin: { kicker: "Field-facing", title: "Mobile check-in", sub: "No sign-in, one person per submission, reached by the incident QR code." }
 };
+
+function playCheckInChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.05;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+    osc.stop(ctx.currentTime + 0.28);
+    window.setTimeout(() => void ctx.close(), 400);
+  } catch {
+    /* ignore — autoplay / unsupported */
+  }
+}
+
+function notifyNewCheckIns(names: string[]) {
+  const body =
+    names.length === 1 ? `New check-in: ${names[0]}` : `${names.length} new check-ins: ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}`;
+  playCheckInChime();
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    try {
+      new Notification("Medical Check-In", { body, tag: "medical-checkin-live" });
+    } catch {
+      /* ignore */
+    }
+  }
+  return body;
+}
 
 export function App() {
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -24,15 +59,21 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<any>(null);
   const [formStep, setFormStep] = useState(0);
+  const [liveNote, setLiveNote] = useState<string | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const seededRef = useRef(false);
+  const incidentIdRef = useRef(incidentId);
+  incidentIdRef.current = incidentId;
 
   const incident = incidents.find((i) => i.id === incidentId) || roster?.incident;
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const list = await api<any[]>("/api/incidents");
     setIncidents(list);
-    const id = incidentId || list[0]?.id;
+    const id = incidentIdRef.current || list[0]?.id;
     if (!id) return;
-    if (!incidentId) setIncidentId(id);
+    if (!incidentIdRef.current) setIncidentId(id);
     const [r, g, q, d, qrcode] = await Promise.all([
       api<any>(`/api/incidents/${id}/roster`),
       api<any>(`/api/incidents/${id}/glide`),
@@ -40,16 +81,59 @@ export function App() {
       api<any>(`/api/incidents/${id}/documents`),
       api<any>(`/api/incidents/${id}/qr`)
     ]);
+    const peopleList: any[] = r?.people ?? [];
+    if (seededRef.current) {
+      const newcomers = peopleList.filter((p) => !knownIdsRef.current.has(p.id));
+      if (newcomers.length) {
+        const names = newcomers.map((p) => `${p.submitted?.firstName ?? ""} ${p.submitted?.lastName ?? ""}`.trim() || "Unknown");
+        setLiveNote(notifyNewCheckIns(names));
+        setTab("roster");
+      }
+    } else {
+      seededRef.current = true;
+    }
+    knownIdsRef.current = new Set(peopleList.map((p) => p.id));
     setRoster(r);
     setGlide(g);
     setReview(q);
     setDocs(d);
     setQr(qrcode);
-  }
+    setLastSyncAt(new Date());
+  }, []);
 
   useEffect(() => {
+    seededRef.current = false;
+    knownIdsRef.current = new Set();
     refresh().catch(console.error);
-  }, [incidentId]);
+  }, [incidentId, refresh]);
+
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "hidden") return;
+      refresh().catch(console.error);
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!liveNote) return;
+    const t = window.setTimeout(() => setLiveNote(null), 14000);
+    return () => window.clearTimeout(t);
+  }, [liveNote]);
 
   useEffect(() => {
     if (!selected) {
@@ -117,6 +201,18 @@ export function App() {
 
   return (
     <div className="app">
+      {liveNote && (
+        <div className="live-toast no-print" role="status">
+          <span className="live-toast-pip" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="mono" style={{ fontSize: 9.5, letterSpacing: ".08em", textTransform: "uppercase", color: "#f4b183" }}>Live update</div>
+            <div style={{ marginTop: 3, font: "600 13px/1.35 IBM Plex Sans" }}>{liveNote}</div>
+          </div>
+          <button type="button" className="chip" onClick={() => setLiveNote(null)} style={{ border: "1px solid rgba(255,255,255,.2)", background: "transparent", color: "#e8e1d6" }}>
+            Dismiss
+          </button>
+        </div>
+      )}
       <nav className="nav">
         <div className="nav-brand">
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -125,6 +221,10 @@ export function App() {
           </div>
           <div style={{ marginTop: 11, font: "600 15px/1.25 IBM Plex Sans", color: "#fff" }}>{incident?.name ?? "—"}</div>
           <div style={{ marginTop: 4, font: "400 10.5px/1.3 IBM Plex Mono", color: "#8e857a" }}>{incident?.number} · {incident?.opPeriod}</div>
+          <div className="live-sync no-print" title="Roster refreshes automatically about every 8 seconds while this tab is open">
+            <span className="live-sync-dot" />
+            Live{lastSyncAt ? ` · ${lastSyncAt.toLocaleTimeString()}` : ""}
+          </div>
           {incidents.length > 1 && (
             <select className="no-print" value={incidentId} onChange={(e) => setIncidentId(e.target.value)} style={{ marginTop: 10, width: "100%", background: "#2a241d", color: "#e8e1d6", border: "1px solid #3a332b", borderRadius: 6, padding: 6 }}>
               {incidents.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
