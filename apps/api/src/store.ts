@@ -5,6 +5,7 @@ import {
   counters,
   documentStatuses,
   incidents,
+  medicalPlans,
   people,
   resourceInstances,
   responses
@@ -13,10 +14,12 @@ import {
   DOCUMENT_TYPES,
   calculateAssignmentDates,
   effectiveAssignment,
+  emptyMedicalPlan,
   formatShortDate,
   glideStateFromRemaining,
   matchResource,
   nextDocumentStatus,
+  normalizeMedicalPlan,
   normalizeResourceOrder,
   openDocumentCount,
   payloadContainsFileHint,
@@ -28,6 +31,7 @@ import {
   type DocumentStatusValue,
   type DocumentType,
   type FormPayload,
+  type MedicalPlanPayload,
   type OperationalStatus,
   type PersonOverrides,
   type ResourceCandidate
@@ -482,6 +486,72 @@ export class Store {
     const peopleOld = await this.db.select().from(people).where(eq(people.incidentId, oldIncidentId));
     const overlap = peopleNew.filter((p) => peopleOld.some((o) => o.id === p.id || o.responseId === p.responseId));
     return overlap.length === 0 && peopleNew.length === 0;
+  }
+
+  async getMedicalPlan(incidentId: string) {
+    const inc = await this.getIncident(incidentId);
+    if (!inc) throw Object.assign(new Error("Incident not found"), { status: 404 });
+    const rows = await this.db.select().from(medicalPlans).where(eq(medicalPlans.incidentId, incidentId));
+    const plan = rows[0]
+      ? normalizeMedicalPlan(rows[0].payload as MedicalPlanPayload, inc.opPeriod)
+      : emptyMedicalPlan(inc.opPeriod);
+    const roster = await this.roster(incidentId);
+    const rosterHint = roster.people
+      .filter((p) => ["Ambo", "REMS", "EMPF", "MEDL/MEDLt"].includes(p.submitted.position))
+      .map((p) => ({
+        name: `${p.submitted.firstName} ${p.submitted.lastName}`,
+        position: p.submitted.position,
+        callSign: p.resource?.callSign ?? "—",
+        status: p.status
+      }));
+    return {
+      incident: {
+        id: inc.id,
+        name: inc.name,
+        number: inc.number,
+        opPeriod: inc.opPeriod,
+        timezone: inc.timezone,
+        fireEmail: inc.fireEmail
+      },
+      plan,
+      updatedAt: rows[0]?.updatedAt ?? null,
+      updatedBy: rows[0]?.updatedBy ?? null,
+      rosterHint
+    };
+  }
+
+  async saveMedicalPlan(incidentId: string, raw: Partial<MedicalPlanPayload>, actor: string) {
+    const inc = await this.getIncident(incidentId);
+    if (!inc) throw Object.assign(new Error("Incident not found"), { status: 404 });
+    const plan = normalizeMedicalPlan(raw, inc.opPeriod);
+    const existing = await this.db.select().from(medicalPlans).where(eq(medicalPlans.incidentId, incidentId));
+    const now = new Date();
+    if (existing[0]) {
+      await this.db
+        .update(medicalPlans)
+        .set({ payload: plan, updatedAt: now, updatedBy: actor })
+        .where(eq(medicalPlans.id, existing[0].id));
+      await this.audit({
+        entityType: "medical_plan",
+        entityId: existing[0].id,
+        kind: "update",
+        actor,
+        before: existing[0].payload,
+        after: plan
+      });
+      return { id: existing[0].id, plan, updatedAt: now, updatedBy: actor };
+    }
+    const rec = { id: id(), incidentId, payload: plan, updatedAt: now, updatedBy: actor };
+    await this.db.insert(medicalPlans).values(rec);
+    await this.audit({
+      entityType: "medical_plan",
+      entityId: rec.id,
+      kind: "create",
+      actor,
+      before: null,
+      after: plan
+    });
+    return { id: rec.id, plan, updatedAt: now, updatedBy: actor };
   }
 }
 

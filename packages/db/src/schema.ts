@@ -85,3 +85,20 @@ export const counters = pgTable("counters", {
   key: text("key").primaryKey(),
   value: integer("value").notNull()
 });
+
+/** One Medical Plan (ICS 206-style) document per incident; OP period lives in payload. */
+export const medicalPlans = pgTable(
+  "medical_plans",
+  {
+    id: text("id").primaryKey(),
+    incidentId: text("incident_id")
+      .notNull()
+      .references(() => incidents.id),
+    payload: jsonb("payload").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: text("updated_by").notNull().default("")
+  },
+  (t) => ({
+    uniq: uniqueIndex("medical_plans_incident").on(t.incidentId)
+  })
+);

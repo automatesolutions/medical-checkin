@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DOCUMENT_STYLE, DOCUMENT_TYPES, FIELD_LABELS, FORM_SECTIONS, GLIDE_COLORS, formatShortDate, type GlideState } from "@medical/domain";
 import { api } from "./api";
+import { MedicalPlanPanel } from "./MedicalPlan";
 
-type Tab = "roster" | "glide" | "review" | "docs" | "checkin";
+type Tab = "roster" | "glide" | "review" | "docs" | "plan" | "checkin";
 const POLL_MS = 8000;
 const PAGES: Record<Tab, { kicker: string; title: string; sub: string }> = {
   roster: { kicker: "Working tracker", title: "Personnel roster", sub: "One row per person, grouped under the resource they were ordered on. Submitted values are locked; the ember-marked fields are the only ones the Medical Unit edits." },
   glide: { kicker: "Rolling date view", title: "Glide Path", sub: "Workdays remaining per person, grouped by resource. Landscape, one page wide, legend included." },
   review: { kicker: "Exceptions", title: "Needs Resource Review", sub: "The system could not safely determine which resource these people belong to. Nothing merges without a decision here." },
   docs: { kicker: "Status only", title: "Document tracker", sub: "Files stay in the Fire email. This records status, verifier, and timestamp — nothing else." },
+  plan: { kicker: "IAP document", title: "Medical Plan (ICS 206)", sub: "Build the incident Medical Plan for the print trailer / IAP. Save in Admin, then Print / Save PDF. Not a substitute for the official signed NWCG form until reviewed by SOF." },
   checkin: { kicker: "Field-facing", title: "Mobile check-in", sub: "No sign-in, one person per submission, reached by the incident QR code." }
 };
 
@@ -150,6 +152,7 @@ export function App() {
     { key: "glide" as const, label: "Glide Path", count: people.filter((p: any) => ["Red", "LWD", "DMB/TVL"].includes(p.calculated?.glidePathState)).length },
     { key: "review" as const, label: "Review queue", count: reviewCount },
     { key: "docs" as const, label: "Documents", count: people.reduce((n: number, p: any) => n + (p.openDocs || 0), 0) },
+    { key: "plan" as const, label: "Medical Plan", count: "206" },
     { key: "checkin" as const, label: "Check-in form", count: "QR" }
   ];
   const active = people.filter((p: any) => p.status === "Active").length;
@@ -454,6 +457,14 @@ export function App() {
               ))}
               <div style={{ padding: "12px 16px", background: "#faf5ed", fontSize: 11, color: "#8b8072" }}>No attachments, images, or file links are stored here. Documents live in the Fire email at {docs.fireEmail}.</div>
             </div>
+          )}
+
+          {tab === "plan" && incidentId && (
+            <MedicalPlanPanel
+              incidentId={incidentId}
+              incidentName={incident?.name}
+              incidentNumber={incident?.number}
+            />
           )}
 
           {tab === "checkin" && (

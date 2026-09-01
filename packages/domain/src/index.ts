@@ -7,3 +7,4 @@ export * from "./documents.js";
 export * from "./form.js";
 export * from "./privacy.js";
 export * from "./counts.js";
+export * from "./medical-plan.js";

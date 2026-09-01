@@ -3,7 +3,13 @@ import { cors } from "hono/cors";
 import { getDb } from "@medical/db";
 import QRCode from "qrcode";
 import { Store } from "./store.js";
-import { DOCUMENT_TYPES, type DocumentType, type FormPayload, type PersonOverrides } from "@medical/domain";
+import {
+  DOCUMENT_TYPES,
+  type DocumentType,
+  type FormPayload,
+  type MedicalPlanPayload,
+  type PersonOverrides
+} from "@medical/domain";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -115,6 +121,23 @@ export async function createApp() {
       const url = `${base.replace(/\/$/, "")}/c/${inc.slug}`;
       const png = await QRCode.toDataURL(url, { margin: 1, width: 256 });
       return c.json({ url, png });
+    });
+    admin.get("/incidents/:id/medical-plan", async (c) => {
+      try {
+        return c.json(await store.getMedicalPlan(c.req.param("id")));
+      } catch (err) {
+        const f = fail(err);
+        return c.json(f.body, f.status as 404);
+      }
+    });
+    admin.put("/incidents/:id/medical-plan", async (c) => {
+      try {
+        const body = (await c.req.json()) as Partial<MedicalPlanPayload>;
+        return c.json(await store.saveMedicalPlan(c.req.param("id"), body, actor(c)));
+      } catch (err) {
+        const f = fail(err);
+        return c.json(f.body, f.status as 404);
+      }
     });
     admin.get("/people/:id", async (c) => c.json(await store.personDetail(c.req.param("id"))));
     admin.patch("/people/:id/overrides", async (c) => {

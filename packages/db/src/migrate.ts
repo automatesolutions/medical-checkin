@@ -65,6 +65,14 @@ CREATE TABLE IF NOT EXISTS counters (
   key text PRIMARY KEY,
   value integer NOT NULL
 );
+CREATE TABLE IF NOT EXISTS medical_plans (
+  id text PRIMARY KEY,
+  incident_id text NOT NULL REFERENCES incidents(id),
+  payload jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by text NOT NULL DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS medical_plans_incident ON medical_plans (incident_id);
 `;
 
 export async function migrate() {

@@ -64,6 +64,18 @@ h1 { margin: 7px 0 0; font: 600 23px/1.15 "IBM Plex Sans"; letter-spacing: -.015
   0%, 100% { opacity: 1; }
   50% { opacity: .45; }
 }
+.plan-section h3 { margin: 0 0 10px; font: 600 14px IBM Plex Sans; }
+.plan-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.plan-section-head h3 { margin: 0; }
+.plan-card { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #fbf8f3; margin-bottom: 10px; }
+.plan-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.plan-section label, .plan-card label { display: block; font: 500 11.5px IBM Plex Sans; color: #5e5449; }
+.plan-section input, .plan-section textarea, .plan-card input, .plan-card textarea {
+  width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+  font: 400 12.5px IBM Plex Sans; background: #fff;
+}
+.plan-check { display: inline-flex !important; align-items: center; gap: 6px; margin-top: 8px; font: 500 12px IBM Plex Sans !important; }
+.plan-check input { width: auto !important; margin: 0 !important; }
 @media print {
   @page { size: landscape; margin: 8mm; }
   html, body, #root { background: #fff !important; height: auto !important; }
@@ -87,6 +99,15 @@ h1 { margin: 7px 0 0; font: 600 23px/1.15 "IBM Plex Sans"; letter-spacing: -.015
   /* Fit the 14-day board across one landscape sheet / large plotter page. */
   .glide-print-root { width: 100%; }
   .glide-print-root .glide-grid > div:last-child { min-width: 0; }
+  .medical-plan-root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .medical-plan-banner { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e3dbcf; }
+  .plan-card { break-inside: avoid; page-break-inside: avoid; background: #fff; }
+  .plan-section input, .plan-section textarea, .plan-card input, .plan-card textarea {
+    border: 0; border-bottom: 1px solid #ddd; border-radius: 0; padding-left: 0; background: transparent;
+  }
 }
 @media (max-width: 780px) {
   .nav { display: none; }
