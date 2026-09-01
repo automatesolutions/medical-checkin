@@ -212,10 +212,44 @@ export function App() {
           )}
 
           {tab === "glide" && glide && (
-            <div className="card">
-              <div style={{ display: "flex", gap: 14, padding: "12px 16px", borderBottom: "1px solid #eee7dc", background: "#fbf8f3", alignItems: "center" }}>
+            <div className="card glide-print-root">
+              <div className="print-only glide-print-banner">
+                <div className="mono" style={{ fontSize: 10, letterSpacing: ".1em", color: "#b8461d", textTransform: "uppercase" }}>Medical Unit · Glide Path</div>
+                <div style={{ marginTop: 4, font: "600 18px IBM Plex Sans" }}>{incident?.name || "Incident"}{incident?.number ? ` · ${incident.number}` : ""}</div>
+                <div className="mono" style={{ marginTop: 4, fontSize: 11, color: "#6f6558" }}>
+                  Rolling 14 days from {glide.startLabel}
+                  {incident?.opPeriod ? ` · OP ${incident.opPeriod}` : ""}
+                  {" · Printed "}
+                  {new Date().toLocaleString()}
+                </div>
+              </div>
+              <div className="no-print" style={{ display: "flex", gap: 14, padding: "12px 16px", borderBottom: "1px solid #eee7dc", background: "#fbf8f3", alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ font: "600 12px IBM Plex Sans" }}>Rolling 14 days from {glide.startLabel}</div>
                 <div style={{ flex: 1 }} />
+                {(["Green", "Yellow", "Red", "LWD", "DMB/TVL", "REVIEW"] as GlideState[]).map((k) => (
+                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 11, height: 11, borderRadius: 3, background: GLIDE_COLORS[k].dot }} />
+                    <span className="mono" style={{ fontSize: 10, color: "#6f6558" }}>{k}</span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="chip"
+                  onClick={() => {
+                    setSelected(null);
+                    const prev = document.title;
+                    const stamp = new Date().toISOString().slice(0, 10);
+                    document.title = `Glide-Path_${incident?.name || "incident"}_${stamp}`.replace(/\s+/g, "-");
+                    window.print();
+                    document.title = prev;
+                  }}
+                  style={{ border: "1px solid #1c1814", background: "#1c1814", color: "#fff", padding: "7px 12px" }}
+                  title="Opens the system print dialog. Choose Save as PDF or a large-format printer."
+                >
+                  Print / Save PDF
+                </button>
+              </div>
+              <div className="print-only glide-print-legend" style={{ gap: 14, padding: "8px 0 10px", alignItems: "center", flexWrap: "wrap" }}>
                 {(["Green", "Yellow", "Red", "LWD", "DMB/TVL", "REVIEW"] as GlideState[]).map((k) => (
                   <div key={k} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <span style={{ width: 11, height: 11, borderRadius: 3, background: GLIDE_COLORS[k].dot }} />

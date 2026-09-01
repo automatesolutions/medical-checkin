@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to use — Medical Check-In &amp; Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f2ec;
+    --surface: #fff;
+    --charcoal: #1c1814;
+    --ember: #e2691f;
+    --ember-deep: #b8461d;
+    --border: #e3dbcf;
+    --hair: #f4efe6;
+    --muted: #8b8072;
+    --body: #3a332b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--charcoal); font-family: "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--ember-deep); }
+  a:hover { color: #8f3413; }
+  .wrap { display: flex; min-height: 100vh; }
+  nav {
+    width: 220px; flex: none; background: var(--charcoal); color: #e8e1d6;
+    position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+  }
+  nav .brand { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.09); }
+  nav .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 0 4px rgba(226,105,31,.18); }
+  nav .unit { font: 600 12.5px/1.1 "IBM Plex Sans"; }
+  nav h1 { margin: 11px 0 0; font: 600 15px/1.25 "IBM Plex Sans"; color: #fff; }
+  nav .meta { margin-top: 4px; font: 400 10.5px/1.3 "IBM Plex Mono"; color: #8e857a; }
+  nav .links { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: auto; }
+  nav a.item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px;
+    font: 500 12.5px/1 "IBM Plex Sans"; color: #e8e1d6; text-decoration: none;
+  }
+  nav a.item:hover { background: rgba(255,255,255,.07); color: #fff; }
+  nav a.item .pip { width: 5px; height: 5px; border-radius: 50%; background: #5a5248; flex: none; }
+  nav .foot { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.09); font: 400 10px/1.5 "IBM Plex Mono"; color: #7d7469; }
+  main { flex: 1; min-width: 0; padding: 22px 28px 56px; max-width: 920px; }
+  .kicker { font: 600 10px/1 "IBM Plex Mono"; letter-spacing: .11em; color: #9a8f80; text-transform: uppercase; }
+  h2.page { margin: 7px 0 0; font: 600 23px/1.15 "IBM Plex Sans"; letter-spacing: -.015em; }
+  .lead { margin: 8px 0 0; font: 400 13px/1.55 "IBM Plex Sans"; color: #6f6558; max-width: 720px; }
+  section { margin-top: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  section > header { padding: 14px 18px 12px; background: #fbf8f3; border-bottom: 1px solid #eee7dc; }
+  section > header .eyebrow { font: 600 9.5px/1 "IBM Plex Mono"; letter-spacing: .09em; color: #9a8f80; text-transform: uppercase; }
+  section > header h3 { margin: 6px 0 0; font: 600 16px/1.25 "IBM Plex Sans"; }
+  section > .body { padding: 16px 18px 18px; font: 400 13px/1.55 "IBM Plex Sans"; color: var(--body); }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 20px; }
+  li { margin: 5px 0; }
+  code, .url {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+    background: #f4efe6; padding: 2px 6px; border-radius: 4px; word-break: break-all;
+  }
+  .note { padding: 11px 12px; background: #fdf1ea; border: 1px solid #f2ddcd; border-radius: 8px; font: 500 12px/1.5 "IBM Plex Sans"; color: #8f3413; margin: 12px 0; }
+  .note.ok { background: #e2f0e6; border-color: #c6e2ce; color: #2f6b45; }
+  .note.muted { background: #faf5ed; border-color: #eee7dc; color: var(--muted); font-weight: 400; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .surf { padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: #fbf8f3; }
+  .surf strong { display: block; font: 600 13px "IBM Plex Sans"; }
+  .surf p { margin: 6px 0 0; font: 400 12px/1.5 "IBM Plex Sans"; color: #6f6558; }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .step n { flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--charcoal); color: #f4b183; font: 600 11px/22px "IBM Plex Mono"; text-align: center; }
+  .step b { display: block; font: 600 13px "IBM Plex Sans"; }
+  .step span { display: block; margin-top: 3px; font: 400 12px/1.45 "IBM Plex Sans"; color: #6f6558; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  th { font: 600 9.5px/1 "IBM Plex Mono"; letter-spacing: .08em; text-transform: uppercase; color: #9a8f80; background: #fbf8f3; }
+  .link-card {
+    display: block; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff; text-decoration: none; color: inherit; margin-bottom: 8px;
+  }
+  .link-card:hover { border-color: #f2ddcd; background: #fdf1ea; text-decoration: none; }
+  .link-card .tag { font: 600 9.5px/1 "IBM Plex Mono"; letter-spacing: .09em; color: var(--ember); text-transform: uppercase; }
+  .link-card .title { margin-top: 6px; font: 600 15px "IBM Plex Sans"; }
+  .link-card .href { margin-top: 6px; font: 400 11px/1.4 "IBM Plex Mono"; color: #6f6558; word-break: break-all; }
+  @media (max-width: 780px) {
+    nav { display: none; }
+    .two { grid-template-columns: 1fr; }
+    main { padding: 18px 16px 40px; }
+  }
+  @media print {
+    nav { display: none; }
+    main { max-width: none; padding: 0; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div class="dot"></div>
+        <div class="unit">Medical Unit</div>
+      </div>
+      <h1>How to use</h1>
+      <div class="meta">Admin · Public check-in · QR</div>
+    </div>
+    <div class="links">
+      <a class="item" href="#start"><span class="pip"></span>Start here</a>
+      <a class="item" href="#two-apps"><span class="pip"></span>Two apps</a>
+      <a class="item" href="#links"><span class="pip"></span>Live links</a>
+      <a class="item" href="#field"><span class="pip"></span>Field check-in</a>
+      <a class="item" href="#qr"><span class="pip"></span>QR codes</a>
+      <a class="item" href="#admin"><span class="pip"></span>Admin daily work</a>
+      <a class="item" href="#roster"><span class="pip"></span>Roster</a>
+      <a class="item" href="#glide"><span class="pip"></span>Glide Path</a>
+      <a class="item" href="#review"><span class="pip"></span>Review queue</a>
+      <a class="item" href="#docs"><span class="pip"></span>Documents</a>
+      <a class="item" href="#close"><span class="pip"></span>Close / new incident</a>
+      <a class="item" href="#dont"><span class="pip"></span>Do / don’t</a>
+    </div>
+    <div class="foot">Open this file in a browser.<br>Print landscape if needed.</div>
+  </nav>
+
+  <main>
+    <div class="kicker">Operator guide</div>
+    <h2 class="page">How to use Medical Check-In &amp; Admin</h2>
+    <p class="lead">
+      One place for wildfire Medical Unit staff to see who checked in, who is assigned, and who is demobilizing —
+      without Excel copying or clinical data. Use this page as the day-to-day how-to.
+    </p>
+
+    <section id="start">
+      <header>
+        <div class="eyebrow">01</div>
+        <h3>Start here — the simple picture</h3>
+      </header>
+      <div class="body">
+        <div class="two">
+          <div class="surf">
+            <strong>Public check-in (phones)</strong>
+            <p>Field people open a link or scan a QR and submit <b>one form per person</b>. No Google login. No file uploads.</p>
+          </div>
+          <div class="surf">
+            <strong>Admin (Medical Unit)</strong>
+            <p>Staff open the admin site to manage the roster, Glide Path, review queue, document statuses, and print the QR.</p>
+          </div>
+        </div>
+        <div class="note" style="margin-top:12px">
+          The QR code is <b>not</b> on the public form. Print it from <b>Admin → Check-in form</b>. Scanning that QR opens the public form.
+        </div>
+      </div>
+    </section>
+
+    <section id="two-apps">
+      <header>
+        <div class="eyebrow">02</div>
+        <h3>Two apps — don’t mix them up</h3>
+      </header>
+      <div class="body">
+        <table>
+          <thead>
+            <tr><th>App</th><th>Who uses it</th><th>Login</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Public check-in</td>
+              <td>Ambulance / REMS / ordered medical personnel</td>
+              <td>None</td>
+              <td>Submit identity, assignment, dates, experience, docs checklist</td>
+            </tr>
+            <tr>
+              <td>Admin</td>
+              <td>Medical Unit operators</td>
+              <td>Staff access (Google / IAP when enabled)</td>
+              <td>Roster, Glide Path, review, document status, QR / form link</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="links">
+      <header>
+        <div class="eyebrow">03</div>
+        <h3>Live links (this GCP project)</h3>
+      </header>
+      <div class="body">
+        <a class="link-card" href="https://medical-checkin-669775206679.us-central1.run.app/c/bearclaw-creek" target="_blank" rel="noopener">
+          <div class="tag">Public form</div>
+          <div class="title">Bearclaw Creek check-in</div>
+          <div class="href">https://medical-checkin-669775206679.us-central1.run.app/c/bearclaw-creek</div>
+        </a>
+        <a class="link-card" href="https://medical-admin-669775206679.us-central1.run.app" target="_blank" rel="noopener">
+          <div class="tag">Admin</div>
+          <div class="title">Medical Unit tracker</div>
+          <div class="href">https://medical-admin-669775206679.us-central1.run.app</div>
+        </a>
+        <div class="note muted">
+          If Admin shows <b>Forbidden</b>, Cloud Run is still requiring IAM auth. For a quick test, grant <code>allUsers</code> the
+          <b>Cloud Run Invoker</b> role on <code>medical-admin</code> (Permissions tab), or enable IAP for real staff login later.
+        </div>
+      </div>
+    </section>
+
+    <section id="field">
+      <header>
+        <div class="eyebrow">04</div>
+        <h3>Field check-in (public form)</h3>
+      </header>
+      <div class="body">
+        <p>Each person submits <b>once for themselves</b>. Every ambulance and REMS member submits a separate response.</p>
+        <div class="steps">
+          <div class="step"><n>1</n><div><b>Open the form</b><span>Scan the incident QR, or open the public link above. You should see the incident name (e.g. Bearclaw Creek).</span></div></div>
+          <div class="step"><n>2</n><div><b>Step 1 — Order &amp; identity</b><span>Resource Order # (O or E), email, first name, last name.</span></div></div>
+          <div class="step"><n>3</n><div><b>Step 2 — Role &amp; vehicle</b><span>Position, company, vehicle type / call sign as prompted.</span></div></div>
+          <div class="step"><n>4</n><div><b>Step 3 — Assignment dates</b><span>Date assigned and length of assignment (drives Glide Path).</span></div></div>
+          <div class="step"><n>5</n><div><b>Step 4 — Experience</b><span>Select experience options that apply.</span></div></div>
+          <div class="step"><n>6</n><div><b>Step 5 — Capabilities</b><span>Select capabilities / certifications that apply.</span></div></div>
+          <div class="step"><n>7</n><div><b>Step 6 — Documents checklist</b><span>Mark what you will email. <b>Do not upload files in the form.</b></span></div></div>
+          <div class="step"><n>8</n><div><b>Submit</b><span>Confirmation shows a response id and the Fire email address for mailing Contract, DL, NRCMT, State license, and Medical Director letter (if Narcotics).</span></div></div>
+        </div>
+        <div class="note ok">
+          Nothing clinical or patient-related is collected. Keep documents in email — the app only tracks status.
+        </div>
+      </div>
+    </section>
+
+    <section id="qr">
+      <header>
+        <div class="eyebrow">05</div>
+        <h3>Where is the QR?</h3>
+      </header>
+      <div class="body">
+        <ol>
+          <li>Open <b>Admin</b>.</li>
+          <li>In the left nav, open <b>Check-in form</b>.</li>
+          <li>Print or screenshot the QR for posting at ICP / briefing.</li>
+        </ol>
+        <p>The QR encodes only the public form URL for this incident. Respondents never sign into Admin.</p>
+      </div>
+    </section>
+
+    <section id="admin">
+      <header>
+        <div class="eyebrow">06</div>
+        <h3>Admin — daily workflow</h3>
+      </header>
+      <div class="body">
+        <div class="steps">
+          <div class="step"><n>1</n><div><b>Open Admin</b><span>Confirm the correct incident is selected (e.g. Bearclaw Creek).</span></div></div>
+          <div class="step"><n>2</n><div><b>Print / share the QR</b><span>Check-in form page → post for field use.</span></div></div>
+          <div class="step"><n>3</n><div><b>Watch Roster</b><span>New submissions appear grouped under resources. Ember-bordered fields are the only admin edits.</span></div></div>
+          <div class="step"><n>4</n><div><b>Clear Review queue</b><span>If a person couldn’t be safely matched, decide: link to a candidate resource or create provisional.</span></div></div>
+          <div class="step"><n>5</n><div><b>Update Glide Path view</b><span>Print landscape for briefings. Watch Red / LWD / DMB.</span></div></div>
+          <div class="step"><n>6</n><div><b>Cycle document statuses</b><span>As Fire email receives packets, update status only — no files in the app.</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="roster">
+      <header>
+        <div class="eyebrow">07</div>
+        <h3>Roster</h3>
+      </header>
+      <div class="body">
+        <p>One row per person, grouped under the resource they were ordered on.</p>
+        <ul>
+          <li><b>Filters:</b> All · Active · Enroute · Needs Review</li>
+          <li><b>Click a person</b> to open the detail drawer.</li>
+          <li><b>Ember-marked fields</b> (admin-editable): Division, Camp, effective dates, extension, status — submitted form answers stay locked.</li>
+          <li>Counters at the top show Resources, Personnel, Enroute, LWD/DMB, Review.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="glide">
+      <header>
+        <div class="eyebrow">08</div>
+        <h3>Glide Path</h3>
+      </header>
+      <div class="body">
+        <p>14-day rolling view of workdays remaining, grouped by resource.</p>
+        <ul>
+          <li><b>Last work day (LWD)</b> = first work day + length − 1 + extension days</li>
+          <li><b>DMB / Travel</b> starts the day after LWD</li>
+          <li>Colors: Green · Yellow · Red · LWD · DMB/TVL · REVIEW</li>
+        </ul>
+        <div class="surf" style="margin-top:12px">
+          <strong>Print for the trailer / ICP board</strong>
+          <p>
+            1. Open Admin → <b>Glide Path</b><br>
+            2. Click <b>Print / Save PDF</b><br>
+            3. In the system dialog: set orientation to <b>Landscape</b><br>
+            4. Choose <b>Save as PDF</b>, or send to the large-format / plotter printer<br>
+            5. If colors look washed out, enable <b>Background graphics</b> (Chrome) or equivalent
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="review">
+      <header>
+        <div class="eyebrow">09</div>
+        <h3>Review queue</h3>
+      </header>
+      <div class="body">
+        <p>Shown when the system cannot safely decide which resource a person belongs to. <b>Nothing auto-merges</b> from here.</p>
+        <ul>
+          <li>Link the person to a suggested / existing resource, or</li>
+          <li>Create a provisional resource instance</li>
+        </ul>
+        <p>Every decision is audited. Keep this queue at zero when you can.</p>
+      </div>
+    </section>
+
+    <section id="docs">
+      <header>
+        <div class="eyebrow">10</div>
+        <h3>Documents</h3>
+      </header>
+      <div class="body">
+        <p>Status tracker only. Files live in the Fire email (shown on the page).</p>
+        <p>Cycle status:</p>
+        <p><code>Not Required → Requested → Received → Verified → Rejected → Expired</code></p>
+        <p>If the form selected <b>Narcotics</b>, track the Medical Director letter status as well.</p>
+      </div>
+    </section>
+
+    <section id="close">
+      <header>
+        <div class="eyebrow">11</div>
+        <h3>Close incident / start clean</h3>
+      </header>
+      <div class="body">
+        <ul>
+          <li><b>Close</b> the incident when check-in should stop (no new public submissions).</li>
+          <li>Create a <b>clean incident</b> from Admin → Check-in form when reusing the system — it copies <b>no</b> people, responses, or ids.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="dont">
+      <header>
+        <div class="eyebrow">12</div>
+        <h3>Do / don’t</h3>
+      </header>
+      <div class="body">
+        <div class="two">
+          <div class="surf">
+            <strong>Do</strong>
+            <p>
+              · One submission per person<br>
+              · Print QR from Admin<br>
+              · Email docs to the Fire address<br>
+              · Edit only ember admin fields<br>
+              · Clear Review before briefings
+            </p>
+          </div>
+          <div class="surf">
+            <strong>Don’t</strong>
+            <p>
+              · Upload files into the form<br>
+              · Put QR on the public form page<br>
+              · Store clinical / patient data<br>
+              · Expect Admin and Check-in to be the same URL<br>
+              · Copy rows from Excel into this app
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="future">
+      <header>
+        <div class="eyebrow">13</div>
+        <h3>Future ideas (not built yet)</h3>
+      </header>
+      <div class="body">
+        <ul>
+          <li><b>ICS 206 Medical Plan</b> — generate / fill a standard 206 from incident + roster data for the print trailer.</li>
+          <li>Dedicated plotter paper sizes (Arch C / 11×17) as explicit print presets.</li>
+        </ul>
+        <p class="note muted" style="margin:0">Field testing on a real fire will drive which of these come next.</p>
+      </div>
+    </section>
+
+    <p class="note muted" style="margin-top:28px">
+      More detail: <code>docs/operator-guide.md</code> · Product rules: <code>approval-rfc.md</code> · Implementation notes: <code>implementation-plan.html</code>
+    </p>
+  </main>
+</div>
+</body>
+</html>

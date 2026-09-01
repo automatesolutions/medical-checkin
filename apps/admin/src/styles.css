@@ -41,12 +41,30 @@ h1 { margin: 7px 0 0; font: 600 23px/1.15 "IBM Plex Sans"; letter-spacing: -.015
 .doc-chip { padding: 4px 9px; border-radius: 5px; cursor: pointer; font: 600 9.5px/1.3 "IBM Plex Mono"; letter-spacing: .02em; }
 .glide-grid { display: grid; grid-template-columns: 260px 1fr; }
 .daycell { height: 30px; border-left: 1px solid var(--hair); display: flex; align-items: center; justify-content: center; font: 600 9px "IBM Plex Mono"; }
+.print-only { display: none !important; }
 @media print {
   @page { size: landscape; margin: 8mm; }
-  .nav, .drawer, .no-print { display: none !important; }
-  .app { display: block; }
-  .page { padding: 0; }
-  .head { padding: 0 0 10px; }
+  html, body, #root { background: #fff !important; height: auto !important; }
+  .nav, .drawer, .no-print, .counters { display: none !important; }
+  .print-only { display: block !important; }
+  .print-only.glide-print-legend { display: flex !important; }
+  .app { display: block !important; min-height: 0; }
+  .main { display: block !important; }
+  .page { padding: 0 !important; }
+  .head { padding: 0 0 8px !important; align-items: flex-start; }
+  .head .sub { max-width: none; }
+  .card { border: 0 !important; border-radius: 0 !important; overflow: visible !important; }
+  .glide-print-root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  .glide-print-banner { margin-bottom: 6px; padding-bottom: 8px; border-bottom: 1px solid #e3dbcf; }
+  .glide-grid { grid-template-columns: 220px 1fr; break-inside: avoid; page-break-inside: avoid; }
+  .daycell { height: 22px; font-size: 8px; }
+  /* Fit the 14-day board across one landscape sheet / large plotter page. */
+  .glide-print-root { width: 100%; }
+  .glide-print-root .glide-grid > div:last-child { min-width: 0; }
 }
 @media (max-width: 780px) {
   .nav { display: none; }
