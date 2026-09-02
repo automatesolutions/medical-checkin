@@ -199,7 +199,7 @@ export function App() {
     if (selected) setDetail(await api(`/api/people/${selected}`));
   }
 
-  const previewPerson = people.find((p: any) => p.submitted.lastName === "Ellery") || people[0];
+  const previewPerson = people.find((p: any) => p.submitted.lastName === "Ellery") || people[0] || null;
   const page = PAGES[tab];
 
   return (
@@ -482,14 +482,25 @@ export function App() {
                       <div className="mono" style={{ fontSize: 9.5, letterSpacing: ".09em", color: "#9a8f80", textTransform: "uppercase" }}>Step {formStep + 1} of 6 · {FORM_SECTIONS[formStep].name}</div>
                       <div style={{ marginTop: 7, display: "flex", gap: 3 }}>{FORM_SECTIONS.map((_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= formStep ? "#e2691f" : "#e3dbcf" }} />)}</div>
                     </div>
-                    {previewPerson && FORM_SECTIONS[formStep].keys.map((k) => {
+                    {!previewPerson && (
+                      <div className="mono" style={{ fontSize: 10, color: "#9a8f80" }}>
+                        Preview of empty fields — this incident has no check-ins yet. Open the QR link for the live form.
+                      </div>
+                    )}
+                    {FORM_SECTIONS[formStep].keys.map((k) => {
                       const restricted = /street|city|state|zip|license|supervisor|emergency|eera|director/i.test(k);
-                      const raw = (previewPerson.submitted as any)[k];
-                      const value = restricted ? "Restricted" : Array.isArray(raw) ? raw.join(", ") : String(raw ?? "—");
+                      const raw = previewPerson ? (previewPerson.submitted as any)[k] : undefined;
+                      const value = !previewPerson
+                        ? ""
+                        : restricted
+                          ? "Restricted"
+                          : Array.isArray(raw)
+                            ? raw.join(", ")
+                            : String(raw ?? "—");
                       return (
                         <div key={k}>
                           <div style={{ fontSize: 11.5, color: "#3a332b" }}>{FIELD_LABELS[k as keyof typeof FIELD_LABELS]}</div>
-                          <div style={{ marginTop: 6, padding: "10px 11px", background: "#fff", border: "1px solid #e3dbcf", borderRadius: 8, fontSize: 12, color: restricted ? "#a89d8d" : "#2a241d", minHeight: 38 }}>{value}</div>
+                          <div style={{ marginTop: 6, padding: "10px 11px", background: "#fff", border: "1px solid #e3dbcf", borderRadius: 8, fontSize: 12, color: restricted && previewPerson ? "#a89d8d" : "#2a241d", minHeight: 38 }}>{value}</div>
                         </div>
                       );
                     })}
