@@ -672,24 +672,45 @@ function IncidentControls({
       >
         Save Fire email
       </button>
-      <button
-        style={{ marginTop: 10, minHeight: 44, padding: "8px 12px", borderRadius: 8, border: "1px solid #1c1814", background: "#1c1814", color: "#fff" }}
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          setError(null);
-          try {
-            await api(`/api/incidents/${incident.id}/close`, { method: "POST" });
-            await onChange();
-          } catch (e) {
-            setError((e as Error).message || "Could not close incident");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        Close incident
-      </button>
+      {incident.status === "closed" ? (
+        <button
+          style={{ marginTop: 10, minHeight: 44, padding: "8px 12px", borderRadius: 8, border: 0, background: "#e2691f", color: "#fff" }}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api(`/api/incidents/${incident.id}/reopen`, { method: "POST" });
+              await onChange();
+            } catch (e) {
+              setError((e as Error).message || "Could not reopen incident");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Reopen incident
+        </button>
+      ) : (
+        <button
+          style={{ marginTop: 10, minHeight: 44, padding: "8px 12px", borderRadius: 8, border: "1px solid #1c1814", background: "#1c1814", color: "#fff" }}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api(`/api/incidents/${incident.id}/close`, { method: "POST" });
+              await onChange();
+            } catch (e) {
+              setError((e as Error).message || "Could not close incident");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Close incident
+        </button>
+      )}
 
       <div style={{ marginTop: 16, font: "600 12px IBM Plex Sans" }}>New clean incident</div>
       <div style={{ marginTop: 6, fontSize: 11, color: "#8b8072", lineHeight: 1.45 }}>

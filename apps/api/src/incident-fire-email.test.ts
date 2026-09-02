@@ -59,5 +59,18 @@ describe("incident fire email + QR API", () => {
     });
     expect(patched.status).toBe(200);
     expect((await patched.json()).fireEmail).toBe("2026.littlegiant.medical@firenet.gov");
+
+    const closed = await app.request(`/api/incidents/${rec.id}/close`, {
+      method: "POST",
+      headers: { "X-Dev-Actor": "test@local" }
+    });
+    expect(closed.status).toBe(200);
+
+    const reopened = await app.request(`/api/incidents/${rec.id}/reopen`, {
+      method: "POST",
+      headers: { "X-Dev-Actor": "test@local" }
+    });
+    expect(reopened.status).toBe(200);
+    expect((await reopened.json()).status).toBe("open");
   });
 });

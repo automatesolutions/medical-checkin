@@ -126,6 +126,15 @@ export async function createApp() {
       await store.closeIncident(c.req.param("id"), actor(c));
       return c.json({ ok: true });
     });
+    admin.post("/incidents/:id/reopen", async (c) => {
+      try {
+        const rec = await store.reopenIncident(c.req.param("id"), actor(c));
+        return c.json(rec);
+      } catch (err) {
+        const f = fail(err);
+        return c.json(f.body, f.status as 404);
+      }
+    });
     admin.get("/incidents/:id/roster", async (c) => c.json(await store.roster(c.req.param("id"))));
     admin.get("/incidents/:id/glide", async (c) => c.json(await store.glide(c.req.param("id"))));
     admin.get("/incidents/:id/review", async (c) => c.json(await store.reviewQueue(c.req.param("id"))));

@@ -147,6 +147,14 @@ export class Store {
     await this.audit({ entityType: "incident", entityId: incidentId, kind: "close", actor, before, after: { status: "closed" } });
   }
 
+  async reopenIncident(incidentId: string, actor: string) {
+    const before = await this.getIncident(incidentId);
+    if (!before) throw Object.assign(new Error("Not found"), { status: 404 });
+    await this.db.update(incidents).set({ status: "open" }).where(eq(incidents.id, incidentId));
+    await this.audit({ entityType: "incident", entityId: incidentId, kind: "reopen", actor, before, after: { status: "open" } });
+    return this.getIncident(incidentId);
+  }
+
   async patchIncident(incidentId: string, patch: Partial<{ name: string; number: string; opPeriod: string; timezone: string; fireEmail: string; pinnedToday: string | null }>, actor: string) {
     const before = await this.getIncident(incidentId);
     await this.db.update(incidents).set(patch).where(eq(incidents.id, incidentId));
