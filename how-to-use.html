@@ -185,16 +185,24 @@
         <h3>Live links (this GCP project)</h3>
       </header>
       <div class="body">
-        <a class="link-card" href="https://medical-checkin-669775206679.us-central1.run.app/c/bearclaw-creek" target="_blank" rel="noopener">
-          <div class="tag">Public form</div>
-          <div class="title">Bearclaw Creek check-in</div>
-          <div class="href">https://medical-checkin-669775206679.us-central1.run.app/c/bearclaw-creek</div>
-        </a>
         <a class="link-card" href="https://medical-admin-669775206679.us-central1.run.app" target="_blank" rel="noopener">
           <div class="tag">Admin</div>
           <div class="title">Medical Unit tracker</div>
           <div class="href">https://medical-admin-669775206679.us-central1.run.app</div>
         </a>
+        <a class="link-card" href="https://medical-checkin-669775206679.us-central1.run.app/c/little-giant-sisi-fires" target="_blank" rel="noopener">
+          <div class="tag">Public form · current example</div>
+          <div class="title">Little Giant / SISI Fires check-in</div>
+          <div class="href">https://medical-checkin-669775206679.us-central1.run.app/c/little-giant-sisi-fires</div>
+        </a>
+        <a class="link-card" href="https://medical-checkin-669775206679.us-central1.run.app/c/bearclaw-creek" target="_blank" rel="noopener">
+          <div class="tag">Public form · prior example</div>
+          <div class="title">Bearclaw Creek check-in</div>
+          <div class="href">https://medical-checkin-669775206679.us-central1.run.app/c/bearclaw-creek</div>
+        </a>
+        <div class="note" style="margin-top:12px">
+          Each incident has its <b>own</b> public URL (<code>/c/&lt;slug&gt;</code>). Always copy the link or QR from Admin while that incident is selected in the dropdown — do not reuse an old fire’s URL for a new fire.
+        </div>
         <div class="note muted">
           If Admin shows <b>Forbidden</b>, Cloud Run is still requiring IAM auth. For a quick test, grant <code>allUsers</code> the
           <b>Cloud Run Invoker</b> role on <code>medical-admin</code> (Permissions tab), or enable IAP for real staff login later.
@@ -210,7 +218,7 @@
       <div class="body">
         <p>Each person submits <b>once for themselves</b>. Every ambulance and REMS member submits a separate response.</p>
         <div class="steps">
-          <div class="step"><n>1</n><div><b>Open the form</b><span>Scan the incident QR, or open the public link above. You should see the incident name (e.g. Bearclaw Creek).</span></div></div>
+          <div class="step"><n>1</n><div><b>Open the form</b><span>Scan <b>this fire’s</b> QR, or open the public link from Admin for the selected incident. The header must show the correct fire name (e.g. Little Giant / SISI Fires). If you see “This incident is closed,” you opened an old or closed fire’s URL.</span></div></div>
           <div class="step"><n>2</n><div><b>Step 1 — Order &amp; identity</b><span>Resource Order # (O or E), email, first name, last name.</span></div></div>
           <div class="step"><n>3</n><div><b>Step 2 — Role &amp; vehicle</b><span>Position, company, vehicle type / call sign as prompted.</span></div></div>
           <div class="step"><n>4</n><div><b>Step 3 — Assignment dates</b><span>Date assigned and length of assignment (drives Glide Path).</span></div></div>
@@ -233,10 +241,15 @@
       <div class="body">
         <ol>
           <li>Open <b>Admin</b>.</li>
+          <li>In the left sidebar, use the <b>incident dropdown</b> to select the fire you want (e.g. Little Giant / SISI Fires). The QR always belongs to the <b>selected</b> incident.</li>
           <li>In the left nav, open <b>Check-in form</b>.</li>
+          <li>Confirm the URL under the QR starts with the public check-in host (<code>medical-checkin-…</code>), not Admin and not <code>localhost</code>. Use <b>Open check-in link</b> to test.</li>
           <li>Print or screenshot the QR for posting at ICP / briefing.</li>
         </ol>
         <p>The QR encodes only the public form URL for this incident. Respondents never sign into Admin.</p>
+        <div class="note" style="margin-top:12px">
+          The phone mockup on Check-in form is a <b>preview</b>. On a brand-new fire with no roster yet it may show empty fields — that is normal. The live form is the QR / Open check-in link.
+        </div>
       </div>
     </section>
 
@@ -247,8 +260,8 @@
       </header>
       <div class="body">
         <div class="steps">
-          <div class="step"><n>1</n><div><b>Open Admin</b><span>Confirm the correct incident is selected (e.g. Bearclaw Creek). Keep the tab open — it shows <b>Live</b> and refreshes about every 8 seconds.</span></div></div>
-          <div class="step"><n>2</n><div><b>Print / share the QR</b><span>Check-in form page → post for field use.</span></div></div>
+          <div class="step"><n>1</n><div><b>Open Admin</b><span>Confirm the correct incident is selected in the <b>dropdown</b> (more than one fire can exist at once). Keep the tab open — it shows <b>Live</b> and refreshes about every 8 seconds.</span></div></div>
+          <div class="step"><n>2</n><div><b>Print / share the QR</b><span>With the right fire selected → Check-in form → post that QR / link only. Do not send a previous fire’s URL.</span></div></div>
           <div class="step"><n>3</n><div><b>Watch Roster</b><span>New check-ins appear automatically with a banner (and browser notification if you allow it). Ember-bordered fields are the only admin edits.</span></div></div>
           <div class="step"><n>4</n><div><b>Clear Review queue</b><span>If a person couldn’t be safely matched, decide: link to a candidate resource or create provisional.</span></div></div>
           <div class="step"><n>5</n><div><b>Update Glide Path view</b><span>Print landscape for briefings. Watch Red / LWD / DMB.</span></div></div>
@@ -349,13 +362,18 @@
         <h3>Close incident / start clean</h3>
       </header>
       <div class="body">
+        <p>Admin can hold <b>more than one incident</b>. The sidebar dropdown chooses which fire’s roster, QR, and Fire email you are viewing. Closing one fire does not delete it.</p>
         <ul>
-          <li><b>Close</b> the incident when check-in should stop (no new public submissions).</li>
-          <li>Create a <b>clean incident</b> from Admin → Check-in form when reusing the system — it copies <b>no</b> people, responses, or ids.</li>
-          <li>When creating, enter the <b>new fire’s docs email</b> (e.g. <code>2026.Littlegiant.medical@firenet.gov</code>). The previous fire’s email is shown for reference only and is <b>not</b> copied automatically.</li>
-          <li>You can also <b>Save Fire email</b> on the open incident if the address was wrong.</li>
-          <li>After create, confirm the QR / link under Check-in form opens the public check-in host (not Admin, not localhost), then share that link.</li>
+          <li><b>Close</b> the selected incident when check-in for that fire should stop (public form shows “This incident is closed”). Closing is optional when starting a new fire — it is a separate button, not automatic.</li>
+          <li><b>Reopen</b> appears when the selected incident is closed. Use it if that fire should accept submissions again.</li>
+          <li>Create a <b>clean incident</b> from Admin → Check-in form when starting another fire — it copies <b>no</b> people, responses, or ids. It appears in the dropdown and Admin switches to it.</li>
+          <li>When creating, enter <b>Name</b>, <b>Number</b>, and the <b>new fire’s docs email</b> (e.g. <code>2026.Littlegiant.medical@firenet.gov</code>). The previous fire’s email is shown for reference only and is <b>not</b> copied automatically.</li>
+          <li>You can also <b>Save Fire email</b> on the open incident if the address was wrong — the public form footer updates to that address.</li>
+          <li>After create, stay on the new incident in the dropdown, confirm the QR / link under Check-in form, open it once on a phone, then share <b>only</b> that link.</li>
         </ul>
+        <div class="note" style="margin-top:12px">
+          Common mistake: creating Little Giant but still sharing the Bearclaw URL, or printing the QR while Bearclaw is still selected in the dropdown.
+        </div>
       </div>
     </section>
 
@@ -370,8 +388,9 @@
             <strong>Do</strong>
             <p>
               · One submission per person<br>
-              · Print QR from Admin<br>
-              · Email docs to the Fire address<br>
+              · Select the correct fire in the Admin dropdown before printing QR<br>
+              · Enter the new fire’s docs email when creating a clean incident<br>
+              · Email docs to the Fire address shown on the form<br>
               · Edit only ember admin fields<br>
               · Clear Review before briefings
             </p>
@@ -380,10 +399,11 @@
             <strong>Don’t</strong>
             <p>
               · Upload files into the form<br>
+              · Share an old / closed fire’s check-in URL for a new fire<br>
+              · Assume the Admin phone mockup is the live form<br>
               · Put QR on the public form page<br>
               · Store clinical / patient data<br>
-              · Expect Admin and Check-in to be the same URL<br>
-              · Copy rows from Excel into this app
+              · Expect Admin and Check-in to be the same URL
             </p>
           </div>
         </div>
