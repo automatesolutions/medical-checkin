@@ -506,8 +506,18 @@ export function App() {
                   <div className="mono" style={{ fontSize: 9.5, letterSpacing: ".09em", color: "#9a8f80", textTransform: "uppercase" }}>Incident QR</div>
                   <div style={{ marginTop: 12, display: "flex", gap: 16, alignItems: "center" }}>
                     {qr?.png ? <img src={qr.png} alt="Incident check-in QR" width={96} height={96} style={{ borderRadius: 8, border: "6px solid #fff", outline: "1px solid #e3dbcf" }} /> : <div style={{ width: 96, height: 96, background: "#eee" }} />}
-                    <div style={{ fontSize: 11.5, color: "#6f6558" }}>The printed QR encodes only the check-in link. It opens without a Google account, and no respondent can view, search, or export any response.<div className="mono" style={{ marginTop: 8 }}>{qr?.url}</div></div>
+                    <div style={{ fontSize: 11.5, color: "#6f6558" }}>The printed QR encodes only the check-in link. It opens without a Google account, and no respondent can view, search, or export any response.<div className="mono" style={{ marginTop: 8, wordBreak: "break-all" }}>{qr?.url}</div></div>
                   </div>
+                  {qr?.warning && (
+                    <div style={{ marginTop: 12, padding: "10px 12px", background: "#fdf1ea", border: "1px solid #f2ddcd", borderRadius: 8, fontSize: 11.5, color: "#8f3413" }}>
+                      {qr.warning}
+                    </div>
+                  )}
+                  {qr?.url && (
+                    <a href={qr.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, fontSize: 12, color: "#b8461d" }}>
+                      Open check-in link
+                    </a>
+                  )}
                 </div>
                 <div className="card" style={{ padding: "16px 18px" }}>
                   <div className="mono" style={{ fontSize: 9.5, color: "#9a8f80", textTransform: "uppercase" }}>34 questions, 6 sections</div>
@@ -519,7 +529,13 @@ export function App() {
                     </button>
                   ))}
                 </div>
-                <IncidentControls incident={incident} onChange={refresh} />
+                <IncidentControls
+                  incident={incident}
+                  onChange={refresh}
+                  onCreated={(id) => {
+                    setIncidentId(id);
+                  }}
+                />
               </div>
             </div>
           )}
@@ -597,22 +613,147 @@ export function App() {
   );
 }
 
-function IncidentControls({ incident, onChange }: { incident: any; onChange: () => void }) {
+function IncidentControls({
+  incident,
+  onChange,
+  onCreated
+}: {
+  incident: any;
+  onChange: () => void | Promise<void>;
+  onCreated: (id: string) => void;
+}) {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
+  const [newFireEmail, setNewFireEmail] = useState("");
+  const [editFireEmail, setEditFireEmail] = useState(incident?.fireEmail ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditFireEmail(incident?.fireEmail ?? "");
+  }, [incident?.id, incident?.fireEmail]);
+
   if (!incident) return null;
+
+  const fieldStyle = { width: "100%", marginTop: 8, padding: 10, borderRadius: 6, border: "1px solid #e3dbcf", minHeight: 44 } as const;
+
   return (
     <div className="card no-print" style={{ padding: "16px 18px" }}>
       <div className="mono" style={{ fontSize: 9.5, color: "#9a8f80", textTransform: "uppercase" }}>Incident</div>
       <div style={{ marginTop: 8, fontSize: 12, color: "#6f6558" }}>Status: {incident.status}</div>
-      <button style={{ marginTop: 10, minHeight: 44, padding: "8px 12px", borderRadius: 8, border: "1px solid #1c1814", background: "#1c1814", color: "#fff" }} onClick={async () => { await api(`/api/incidents/${incident.id}/close`, { method: "POST" }); onChange(); }}>Close incident</button>
+      <label style={{ display: "block", marginTop: 12, fontSize: 11.5, color: "#3a332b" }}>
+        Fire docs email (this incident)
+        <input
+          type="email"
+          value={editFireEmail}
+          onChange={(e) => setEditFireEmail(e.target.value)}
+          placeholder="e.g. 2026.Littlegiant.medical@firenet.gov"
+          style={fieldStyle}
+        />
+      </label>
+      <button
+        style={{ marginTop: 8, minHeight: 44, padding: "8px 12px", borderRadius: 8, border: "1px solid #e3dbcf", background: "#fff", color: "#2a241d" }}
+        disabled={busy || !editFireEmail.trim() || editFireEmail.trim() === incident.fireEmail}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await api(`/api/incidents/${incident.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ fireEmail: editFireEmail.trim() })
+            });
+            await onChange();
+          } catch (e) {
+            setError((e as Error).message || "Could not update Fire email");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Save Fire email
+      </button>
+      <button
+        style={{ marginTop: 10, minHeight: 44, padding: "8px 12px", borderRadius: 8, border: "1px solid #1c1814", background: "#1c1814", color: "#fff" }}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await api(`/api/incidents/${incident.id}/close`, { method: "POST" });
+            await onChange();
+          } catch (e) {
+            setError((e as Error).message || "Could not close incident");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Close incident
+      </button>
+
       <div style={{ marginTop: 16, font: "600 12px IBM Plex Sans" }}>New clean incident</div>
-      <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 6, border: "1px solid #e3dbcf", minHeight: 44 }} />
-      <input placeholder="Number" value={number} onChange={(e) => setNumber(e.target.value)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 6, border: "1px solid #e3dbcf", minHeight: 44 }} />
-      <button style={{ marginTop: 8, minHeight: 44, width: "100%", borderRadius: 8, border: 0, background: "#e2691f", color: "#fff" }} onClick={async () => {
-        await api("/api/incidents", { method: "POST", body: JSON.stringify({ name, number, timezone: incident.timezone, fireEmail: incident.fireEmail }) });
-        setName(""); setNumber(""); onChange();
-      }}>Create clean incident</button>
+      <div style={{ marginTop: 6, fontSize: 11, color: "#8b8072", lineHeight: 1.45 }}>
+        Starts empty (no people or responses). Set the <b>new</b> fire’s docs email — do not leave the previous fire’s address.
+      </div>
+      <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={fieldStyle} />
+      <input placeholder="Number" value={number} onChange={(e) => setNumber(e.target.value)} style={fieldStyle} />
+      <input
+        type="email"
+        placeholder="Fire docs email for the new fire"
+        value={newFireEmail}
+        onChange={(e) => setNewFireEmail(e.target.value)}
+        style={fieldStyle}
+      />
+      {incident.fireEmail && (
+        <div className="mono" style={{ marginTop: 6, fontSize: 10, color: "#9a8f80" }}>
+          Previous fire email (for reference only): {incident.fireEmail}
+        </div>
+      )}
+      {error && (
+        <div style={{ marginTop: 8, padding: "8px 10px", background: "#fdf1ea", border: "1px solid #f2ddcd", borderRadius: 8, fontSize: 11.5, color: "#8f3413" }}>
+          {error}
+        </div>
+      )}
+      <button
+        style={{ marginTop: 8, minHeight: 44, width: "100%", borderRadius: 8, border: 0, background: "#e2691f", color: "#fff", opacity: busy ? 0.7 : 1 }}
+        disabled={busy}
+        onClick={async () => {
+          const trimmedName = name.trim();
+          const trimmedNumber = number.trim();
+          const trimmedEmail = newFireEmail.trim();
+          if (!trimmedName || !trimmedNumber || !trimmedEmail) {
+            setError("Name, number, and Fire docs email are required for a new incident.");
+            return;
+          }
+          if (!trimmedEmail.includes("@")) {
+            setError("Fire docs email must be a valid email address.");
+            return;
+          }
+          setBusy(true);
+          setError(null);
+          try {
+            const rec = await api<{ id: string }>("/api/incidents", {
+              method: "POST",
+              body: JSON.stringify({
+                name: trimmedName,
+                number: trimmedNumber,
+                timezone: incident.timezone,
+                fireEmail: trimmedEmail
+              })
+            });
+            setName("");
+            setNumber("");
+            setNewFireEmail("");
+            onCreated(rec.id);
+          } catch (e) {
+            setError((e as Error).message || "Could not create incident");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Create clean incident
+      </button>
     </div>
   );
 }

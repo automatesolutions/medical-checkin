@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { getDb } from "@medical/db";
 import QRCode from "qrcode";
 import { Store } from "./store.js";
+import { resolvePublicCheckinOrigin } from "./checkin-origin.js";
 import {
   DOCUMENT_TYPES,
   type DocumentType,
@@ -86,11 +87,39 @@ export async function createApp() {
     admin.get("/incidents", async (c) => c.json(await store.listIncidents()));
     admin.post("/incidents", async (c) => {
       const body = await c.req.json();
-      const rec = await store.createCleanIncident({ ...body, actor: actor(c) });
+      const name = String(body?.name ?? "").trim();
+      const number = String(body?.number ?? "").trim();
+      const fireEmail = String(body?.fireEmail ?? "").trim();
+      const timezone = String(body?.timezone ?? "").trim() || "UTC";
+      if (!name || !number || !fireEmail) {
+        return c.json({ error: "name, number, and fireEmail are required" }, 400);
+      }
+      if (!fireEmail.includes("@")) {
+        return c.json({ error: "fireEmail must be a valid email address" }, 400);
+      }
+      const rec = await store.createCleanIncident({
+        name,
+        number,
+        timezone,
+        fireEmail,
+        opPeriod: body?.opPeriod,
+        actor: actor(c)
+      });
       return c.json(rec, 201);
     });
     admin.patch("/incidents/:id", async (c) => {
-      const rec = await store.patchIncident(c.req.param("id"), await c.req.json(), actor(c));
+      const body = await c.req.json();
+      const patch: Partial<{ name: string; number: string; opPeriod: string; timezone: string; fireEmail: string; pinnedToday: string | null }> = {};
+      for (const key of ["name", "number", "opPeriod", "timezone", "fireEmail", "pinnedToday"] as const) {
+        if (body?.[key] !== undefined) patch[key] = body[key];
+      }
+      if (typeof patch.fireEmail === "string") {
+        patch.fireEmail = patch.fireEmail.trim();
+        if (!patch.fireEmail || !patch.fireEmail.includes("@")) {
+          return c.json({ error: "fireEmail must be a valid email address" }, 400);
+        }
+      }
+      const rec = await store.patchIncident(c.req.param("id"), patch, actor(c));
       return c.json(rec);
     });
     admin.post("/incidents/:id/close", async (c) => {
@@ -117,10 +146,10 @@ export async function createApp() {
     admin.get("/incidents/:id/qr", async (c) => {
       const inc = await store.getIncident(c.req.param("id"));
       if (!inc) return c.json({ error: "Not found" }, 404);
-      const base = process.env.PUBLIC_CHECKIN_ORIGIN || "http://localhost:5174";
-      const url = `${base.replace(/\/$/, "")}/c/${inc.slug}`;
+      const { base, originConfigured, warning } = resolvePublicCheckinOrigin();
+      const url = `${base}/c/${inc.slug}`;
       const png = await QRCode.toDataURL(url, { margin: 1, width: 256 });
-      return c.json({ url, png });
+      return c.json({ url, png, originConfigured, warning });
     });
     admin.get("/incidents/:id/medical-plan", async (c) => {
       try {
